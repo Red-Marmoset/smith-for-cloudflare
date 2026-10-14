@@ -1,0 +1,93 @@
+{
+  "verifiedAt": "2026-10-04T22:17:38.184173+00:00",
+  "origin": "https://exp.redmarmosetstudios.com",
+  "branch": "feature/cloudflare-experiment",
+  "sourceCommit": "1ce0f177986492e2a562847ae67203803c35106e",
+  "authorization": "User requested latest experimental branch built and deployed while preserving the LAN coordinator.",
+  "build": {
+    "sourceIsolation": "Detached worktree pinned to sourceCommit",
+    "nativeTestProjects": 7,
+    "nativeAssertions": 775,
+    "workerTests": 63,
+    "packagingTests": 9,
+    "promotionTests": 21,
+    "nativeTlsRuntimeScenarios": 12,
+    "generatedTypesAndTypecheck": "passed",
+    "workerDryRun": "passed"
+  },
+  "promotion": {
+    "state": "complete",
+    "packageSha256": "ba385a71ce51981b45dc1506e61a09cd64e03a2e3579afe26930017b47d6b455",
+    "payloadFiles": 17,
+    "workerDeploymentId": "d6cb539f-1412-4915-9bae-344561c64312",
+    "workerVersionId": "b6474cf0-d062-45b2-84a0-0fb5ab013819",
+    "previousWorkerVersionId": "dd80ab61-ce77-4081-b208-b7e581fda46e",
+    "agentVersion": "hosted-1ce0f1779864",
+    "agentPid": 54168,
+    "agentFreshHeartbeatVerified": true,
+    "agentDraining": false,
+    "d1MigrationsApplied": [
+      "0001_identity.sql",
+      "0002_browser_auth.sql",
+      "0003_workspace_directory.sql",
+      "0004_external_identities.sql"
+    ],
+    "rollbackWorkerVersionAndAgentBinaryRetained": true,
+    "identityDatabaseBackupRetained": true
+  },
+  "dashboard": {
+    "javascriptCssAndIconMatchCandidateHashes": true,
+    "htmlMatchesCandidateAfterExcludingCloudflareInjectedScripts": true,
+    "injectedScripts": [
+      "Cloudflare Insights beacon",
+      "Cloudflare challenge-platform script"
+    ],
+    "configuredOAuthProviders": []
+  },
+  "agentDownload": {
+    "path": "/downloads/smith-experiment-windows.zip",
+    "sha256": "5b03b949cbb4c9280b79f074ebb270c68d852e1f1c0ee36aeb3142d5fbca09b7",
+    "bytes": 1291679,
+    "authenticatedChecksumVerified": true,
+    "unauthenticatedStatus": 401
+  },
+  "postDeploymentBuild": {
+    "trigger": "Authenticated hosted build API",
+    "job": {
+      "id": "39efb228-0508-4235-853a-ebcaef3382dc",
+      "projectId": "smith",
+      "product": "build",
+      "state": "success",
+      "nodeId": "e78bb006-79dc-46de-90df-27b6064b339f",
+      "attemptId": "e1b296ed-db85-4417-aa4f-630811b7a3a6",
+      "artifacts": [
+        {
+          "name": "Smith.exe",
+          "sha256": "516df7c79f1ff4466f829628487be0907daad7f26dd81a6dcc69ff5d844041f8",
+          "size": 2516480
+        }
+      ],
+      "result": {
+        "status": "success",
+        "exitCode": 0,
+        "durationMs": 78069,
+        "message": "Build completed"
+      },
+      "createdAt": 1791151929711,
+      "updatedAt": 1791152009934,
+      "revision": 7
+    },
+    "checkoutBranchAndCommitVerifiedInLogs": true,
+    "artifactDownloadedAndChecksumVerified": true,
+    "unauthenticatedArtifactStatus": 401
+  },
+  "lanCoordinator": {
+    "pid": 16616,
+    "executable": "C:\\code\\smith\\Build\\Smith\\Release\\Smith.exe",
+    "startTicksUtc": 639266240871525520,
+    "sha256": "76BD41D82AE3AD9DDAA3BAE583641E43C15E73B38CD740AD920F7758D2253F24",
+    "httpStatusAfter": 200,
+    "processStartTimeAndBinaryUnchanged": true
+  },
+  "scope": "Only the experimental Cloudflare Worker and isolated experimental Windows agent were promoted. OAuth providers are not configured. This does not assert complete product/UI parity or validate every AI workflow."
+}

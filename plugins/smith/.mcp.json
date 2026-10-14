@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "smith": {
+      "type": "http",
+      "url": "${user_config.smith_url}/mcp",
+      "headers": { "Authorization": "Bearer ${user_config.smith_token}" }
+    }
+  }
+}

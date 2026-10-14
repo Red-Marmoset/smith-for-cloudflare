@@ -1,0 +1,12 @@
+{
+    "name": "SmithAgentTest",
+    "version": "0.1.0",
+    "type": "console",
+    "description": "Integration tests for the Smith build agent",
+    "dependencies": ["SmithAgent", "SmithCore", "SmithProtocol", "Http", "Test"],
+    "exports": {
+        "headers": [],
+        "libraries": []
+    },
+    "platforms": ["Windows", "Linux", "macOS"]
+}

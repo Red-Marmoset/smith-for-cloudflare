@@ -1,0 +1,1121 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Smith Help</title><link rel="stylesheet" href="/help.css"></head>
+<body><a class="skip" href="#content">Skip to help content</a><header><a href="/">← Back to Smith</a><strong>Smith Help</strong><span>Setup · Configuration · Troubleshooting</span></header>
+<div class="layout"><nav aria-label="Help topics"><a class="group" href="#user-guide">Getting started &amp; user guide</a><a class="group" href="#smith-json">smith.json reference</a><a class="group" href="#task-stubs">Planned user tasks</a><details><summary>All topics</summary><a href="#user-guide-choose-your-setup">Choose your setup</a><a href="#user-guide-first-hosted-build">First hosted build</a><a href="#user-guide-start-stop-and-update-a-hosted-agent">Start, stop and update a hosted agent</a><a href="#user-guide-understand-build-status">Understand build status</a><a href="#user-guide-logs-and-artifacts">Logs and artifacts</a><a href="#user-guide-large-files-git-lfs">Large files (Git LFS)</a><a href="#user-guide-where-projects-live">Where projects live</a><a href="#user-guide-copies-and-budgets">Copies and budgets</a><a href="#user-guide-import-from-github">Import from GitHub</a><a href="#user-guide-work-with-ai-on-your-computer">Work with AI on your computer</a><a href="#user-guide-let-an-external-coding-assistant-use-smith">Let an external coding assistant use Smith</a><a href="#user-guide-hosted-settings">Hosted settings</a><a href="#user-guide-native-coordinator-and-agent">Native coordinator and agent</a><a href="#user-guide-troubleshooting">Troubleshooting</a><a href="#smith-json-a-first-pipeline">A first pipeline</a><a href="#smith-json-top-level-fields">Top-level fields</a><a href="#smith-json-repositories">Repositories</a><a href="#smith-json-build-products-and-rule-selection">Build products and rule selection</a><a href="#smith-json-variants-and-output-folders">Variants and output folders</a><a href="#smith-json-artifacts-and-inputs">Artifacts and inputs</a><a href="#smith-json-handoffs">Handoffs</a><a href="#smith-json-triggers-and-chains">Triggers and chains</a><a href="#smith-json-this-repository-s-smith-json">This repository&#39;s smith.json</a><a href="#smith-json-hosted-experiment-compatibility">Hosted experiment compatibility</a><a href="#task-stubs-task-01-add-a-hosted-project-from-smith-json">TASK-01 · Add a hosted project from smith.json</a><a href="#task-stubs-task-02-validate-configuration-before-running">TASK-02 · Validate configuration before running</a><a href="#task-stubs-task-03-retry-a-build-or-update-its-pinned-revision">TASK-03 · Retry a build or update its pinned revision</a><a href="#task-stubs-task-04-pause-resume-and-rotate-a-machine-credential">TASK-04 · Pause, resume and rotate a machine credential</a><a href="#task-stubs-task-05-manage-workspace-members-and-invitations">TASK-05 · Manage workspace members and invitations</a><a href="#task-stubs-task-06-approve-an-assistant-action-from-the-dashboard">TASK-06 · Approve an assistant action from the dashboard</a><a href="#task-stubs-task-07-review-and-publish-an-ai-session-s-changes">TASK-07 · Review and publish an AI session&#39;s changes</a><a href="#task-stubs-task-08-notifications-retention-and-export">TASK-08 · Notifications, retention and export</a><a href="#task-stubs-task-09-run-a-chat-with-a-shared-local-model">TASK-09 · Run a chat with a shared local model</a><a href="#task-stubs-task-10-hosted-pipelines-and-other-operating-systems">TASK-10 · Hosted pipelines and other operating systems</a></details><p>Use your browser’s Find (Ctrl+F / ⌘F) to search this guide.</p></nav><main id="content"><article aria-label="Getting started &amp; user guide"><h1 id="user-guide">Smith user guide</h1>
+<p>Smith coordinates work; your repository scripts do the building and publishing.
+A <strong>coordinator</strong> keeps projects, queues work and shows results. A <strong>machine agent</strong>
+runs on a build computer, checks out code and executes those scripts. A <strong>coding
+assistant</strong> is Claude Code or Codex: it is separate from the machine agent.</p>
+<h2 id="user-guide-choose-your-setup">Choose your setup</h2>
+<div class="table-scroll" tabindex="0" aria-label="Scrollable reference table"><table>
+<thead>
+<tr>
+<th>Setup</th>
+<th>Coordinator</th>
+<th>Machine command</th>
+<th>Project configuration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cloudflare experiment</td>
+<td>Hosted dashboard at <code>https://exp.redmarmosetstudios.com</code></td>
+<td>Packaged <code>Setup-Smith.bat</code> (Windows) or <code>sh start-smith.sh agent</code> (macOS/Linux)</td>
+<td>Repository <code>smith.json</code> read by <strong>Add project</strong>, or operator-prepared presets pinned to full Git commits</td>
+</tr>
+<tr>
+<td>Native / LAN</td>
+<td><code>Smith.exe coordinator</code> on your computer or server</td>
+<td><code>Smith.exe agent</code></td>
+<td>Repository-root <code>smith.json</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>These use different enrollment, authentication and APIs. A LAN agent does not
+connect to the hosted coordinator. The hosted dashboard's <strong>Add project</strong> reads a
+repository's <code>smith.json</code>, but not every native feature is available there. The
+<a href="#smith-json">configuration reference</a> describes the native pipeline and the
+hosted differences. <a href="#task-stubs">Planned user tasks</a> lists
+workflows that have a stub but no implementation yet.</p>
+<h2 id="user-guide-first-hosted-build">First hosted build</h2>
+<ol>
+<li>Open the experiment dashboard. Studio staff choose <strong>Continue with Google</strong>
+with their <code>@redmarmosetstudios.com</code> account; the first sign-in creates their
+Smith account, with no invitation. Anyone else uses the operator's one-use
+invitation code, which lasts one hour, then links Google or GitHub with <strong>Link
+Google / GitHub</strong> on the dashboard to sign in that way later. After signing in,
+your browser session lasts seven days. Only configured providers appear.</li>
+<li>Select a <strong>Workspace</strong>, or use <strong>Create workspace</strong> to make an empty one. A
+workspace contains its own members, machines, prepared projects, builds and
+settings. Switching workspaces changes what you see and where work is queued.
+Workspaces shared with the studio (<strong>Settings → Workspace → Studio access</strong>)
+appear on their own for studio Google accounts.</li>
+<li>Use <strong>Connect build machine</strong> for shared build capacity. Use <strong>Connect my
+computer</strong> to enroll your own machine for personal coding chats. Personal
+enrollment associates the machine with your user and does not accept builds.
+Use a separate build enrollment when you need build capacity.</li>
+<li>Download the package for the machine's OS and extract it to a dedicated folder
+such as <code>C:\SmithAgent</code>. Run the command shown in the enrollment dialog there (on
+Windows, double-click it) and paste the connect code when asked; it shows as <code>*****</code>.
+Machine enrollment codes last ten minutes and work once. A sign-in invitation,
+machine enrollment code, Smith access token and Cloudflare API token are
+different credentials and cannot substitute for each other.</li>
+<li>On Windows the agent then runs in the background, starts at logon and reconnects
+by itself; on macOS/Linux keep its terminal open. Check that the machine appears online, with the correct
+OS and required labels. A label describes a capability; adding a label does not
+install a toolchain. Smith builds require Git access, Visual Studio C++ tools
+and a bootstrapped Una engine. Set <code>UNA_ENGINE_PATH</code> if its location differs
+from <code>C:\code\engine</code>.</li>
+<li>Use <strong>Add project</strong> to pick a repository and optional branch; Smith reads its
+<code>smith.json</code> and offers a build action per product, each building the newest
+commit on the branch. On an operator-prepared project the source revision is
+pinned instead: a new push does not update that preset.
+No repository yet? Under <strong>Start from</strong>, choose <strong>Nothing</strong> for a new, empty
+project (one README commit) or <strong>A .zip of the project's files</strong> (up to 100 MB;
+a <code>.gitignore</code> in the zip is honoured and a <code>.git</code> folder is left out). With
+Smith's storage set up (Cloudflare Artifacts), Smith makes the first commit itself
+and keeps the project there, so no machine needs to be online; use <strong>Clone</strong> on the
+card to push to it. Build machines with <strong>Keep copies here</strong> take copies within
+their budgets, and builds run from those copies, served at
+<code>https://exp.redmarmosetstudios.com/git/&lt;project&gt;.git</code>; storage stays the home (see
+&quot;Where projects live&quot;). Without storage, or for a file over 32 MB or a project over
+1 GB, a machine that keeps copies creates the repository instead.
+Push a <code>smith.json</code> and the build actions appear (Smith reads it again after every
+push). Link it to GitHub later from the card if you like.
+Simple projects need no <code>smith.json</code>: with none, Smith runs a root <code>build.bat</code>,
+<code>build.ps1</code> or <code>build.sh</code>, builds a <code>package.json</code> project with npm, or packs a
+site with a root <code>index.html</code> into <code>site.tar.gz</code>. The card shows the default it
+uses. To have one written for you, add a <strong>Pipeline setup</strong> crew member.</li>
+<li>Select the build row to read output, its result and any artifact downloads.
+<strong>Refresh</strong> fetches current state immediately; the page also refreshes
+automatically. Closing your browser does not cancel a build.</li>
+</ol>
+<p>An empty workspace does not acquire projects automatically. Owners/admins add
+them with <strong>Add project</strong>, or prepare pinned presets through the API described in
+<a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/docs/cloudflare/operations.md">operations</a>.</p>
+<h2 id="user-guide-start-stop-and-update-a-hosted-agent">Start, stop and update a hosted agent</h2>
+<p>From a source checkout, double-click <code>SmithAgent.bat</code> for <strong>Install/update</strong>,
+<strong>Start</strong>, <strong>Stop</strong>, <strong>Status</strong>, <strong>Find</strong> and <strong>Help</strong>, or run those actions by name. The install folder
+defaults to <code>C:\SmithAgent</code>; <code>SMITH_AGENT_HOME</code> selects another folder. Install
+builds from that checkout and requires its build tools. The first start saves the
+workspace ID and asks for enrollment. Subsequent starts reuse saved enrollment.</p>
+<p>With an extracted Windows package, <code>Setup-Smith.bat</code> connects the machine and keeps
+the agent running in the background from logon; <code>Setup-Smith.bat status</code>, <code>stop</code>,
+<code>remove</code> and <code>reconnect</code> manage it. <code>Start-Smith.bat agent --workspace-id &lt;id&gt;</code> runs
+the agent in the foreground instead; PowerShell users can use <code>Start-Smith.ps1</code>.
+<code>Start-Smith.bat version</code> checks the executable without connecting.
+<code>Start-Smith.bat help</code> and <code>Start-Smith.bat agent --help</code> explain its options.</p>
+<p><code>SmithAgent.bat stop</code> requests a graceful stop and waits for the current build to
+finish. If it is still busy after ten minutes, the helper offers a forced stop;
+the interrupted job can become <code>lost</code>. <strong>Disconnect</strong> in the dashboard revokes
+credentials and fences active work; it is not a graceful pause. Re-enroll in a
+fresh dedicated agent directory after revocation. Admins can drain a machine
+through the API to prevent new builds while letting the current one finish.</p>
+<p>For a manual graceful shutdown, launch with <code>--drain-file &lt;absolute-path&gt;</code> and
+create that file when you want it to stop. Saved completion is reconciled before
+exit. Remove the file before restarting. This waits for build work; stop any
+active coding chat separately before shutting down its machine.</p>
+<p>Hosted agents update themselves: when a newer package is published, each agent
+installs it between builds and chats and restarts; if the new version is not
+accepted it rolls back. Set <code>SMITH_AGENT_AUTO_UPDATE=0</code> to switch this off for one
+machine. Agents older than self-update need one manual update (<code>SmithAgent.bat update</code>). Enrollment is preserved. Keep running agents outside packaging output
+directories. Do not share the credential/state folder or run two agents in the
+same folder. Builds die with the agent on every OS (a job object on Windows, a
+process-group sentinel on macOS/Linux).</p>
+<h2 id="user-guide-understand-build-status">Understand build status</h2>
+<div class="table-scroll" tabindex="0" aria-label="Scrollable reference table"><table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning and next action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>queued</code></td>
+<td>Waiting for an active compatible machine with all required labels and a command for its OS. Check machine availability and project requirements.</td>
+</tr>
+<tr>
+<td><code>leased</code></td>
+<td>Assigned to a machine; checkout/startup is beginning.</td>
+</tr>
+<tr>
+<td><code>running</code></td>
+<td>The script is executing. Select the row to follow output.</td>
+</tr>
+<tr>
+<td><code>success</code></td>
+<td>Commands completed successfully and declared uploads were acknowledged. Download available artifacts.</td>
+</tr>
+<tr>
+<td><code>failed</code> / <code>error</code></td>
+<td>A command or setup step failed. Read the earliest useful error, including checkout/toolchain/output failures.</td>
+</tr>
+<tr>
+<td><code>cancelled</code></td>
+<td>Cancellation was accepted. Running work stops when the runner observes it; it may not stop instantly.</td>
+</tr>
+<tr>
+<td><code>lost</code></td>
+<td>The agent crashed, disconnected beyond its lease, or was revoked. Check the machine before explicitly queuing replacement work. Hosted builds have no automatic retry.</td>
+</tr>
+<tr>
+<td><code>superseded</code> (native)</td>
+<td>A newer commit replaced an older queued automatic build.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Hosted leases last 90 seconds and renew every 20 seconds. The agent watchdog
+stops work before its lease expires. The machine's displayed <strong>offline</strong> threshold
+is a workspace setting; it does not change these lease timers. Each agent runs
+one build at a time. More enrolled compatible machines provide parallel builds.</p>
+<p><strong>Cancel build</strong> cancels the selected queued or active job. It cannot undo files
+already written or publishing already performed by a repository script. A rerun
+is explicit: choose the product action again. After a lost browser response, retry
+the same action; Smith retains its request ID to avoid accidentally queuing twice.</p>
+<h2 id="user-guide-logs-and-artifacts">Logs and artifacts</h2>
+<p>Hosted build output is limited to 4 MiB per job. The browser retains the newest
+500,000 characters; a truncation message means the displayed output is incomplete.
+Settings control timestamps and whether new output scrolls the log to the bottom.
+Elapsed timestamps start from the first output loaded in that view.</p>
+<p>Hosted presets can declare up to <strong>four exact output files</strong>, each <strong>1 byte to
+20 MiB</strong>, with <code>package: &quot;none&quot;</code>. Paths are relative to the build working
+directory. Filenames must be portable, and their basenames must be unique even
+when in different folders. No wildcard collection, input dependencies or built-in
+handoff steps are supported. Create a zip in your script and declare that exact
+zip if you need a folder. Downloads are available on successful builds to current
+workspace members. Missing/oversized declared files fail the build.</p>
+<p>The native coordinator also supports glob collection, built-in zip packaging,
+artifact inputs and ordered handoffs; see <a href="#smith-json">smith.json</a>.</p>
+<h2 id="user-guide-large-files-git-lfs">Large files (Git LFS)</h2>
+<p>Smith is a Git LFS server for every project in a workspace. Objects are kept in
+Smith's storage (Cloudflare R2), not on the machines that serve git.</p>
+<ul>
+<li>
+<p><strong>Smith-hosted repositories</strong> need nothing: run <code>git lfs install</code> once on your
+computer, then <code>git lfs track &quot;*.psd&quot;</code> and push as usual. git-lfs finds the
+endpoint from the clone URL.</p>
+</li>
+<li>
+<p><strong>Repositories hosted elsewhere</strong> (GitHub, …) opt in by committing <code>.lfsconfig</code>
+at the repository root; the project card's <strong>Large files → Setup</strong> shows it:</p>
+<pre><code class="language-ini">[lfs]
+	url = https://&lt;your coordinator&gt;/git/&lt;project&gt;.git/info/lfs
+</code></pre>
+</li>
+</ul>
+<p>Credentials are the ones git uses with Smith: a Smith token as the password,
+read scope to fetch, build scope to push. Builds of a project that keeps large
+files run only on machines that have git-lfs installed (label <code>git-lfs</code>) and
+receive a short-lived ticket for the objects.</p>
+<p><strong>Settings → Large files</strong> shows what the workspace keeps and the mode. Out of
+the box objects move through the coordinator, up to 100 MB each (a Cloudflare
+limit). Giving the coordinator an R2 API token as two secrets (see Operations)
+sends objects straight to R2 instead, up to 5 GB each. The workspace quota
+(default 5 GB) refuses a push past it with the numbers.</p>
+<p><strong>Copies on your machines.</strong> Switch <strong>Keep copies here</strong> on a build machine's card and
+it keeps copies of large files as well as repositories, within its budget (see &quot;Copies
+and budgets&quot;); the card shows what it holds and whether it is full. If an object ever
+goes missing from storage, a machine holding a copy sends it back on its own, and
+<strong>Check large files</strong> in Settings verifies every object on request. Switching a machine
+off drops its copies; storage still has the objects, and other machines take over where
+they can.</p>
+<p>Files over the import threshold (Settings → Large files) are moved to large files when
+a repository is imported from GitHub; see &quot;Import from GitHub&quot;.</p>
+<h2 id="user-guide-where-projects-live">Where projects live</h2>
+<p>A project copied into Smith has a home: <strong>Smith's storage</strong> (Cloudflare Artifacts, reached only through this site's
+git address) or <strong>a build machine</strong>. Storage is the home whenever Smith has it and the repository is under 1 GB; a
+repository too large for storage lives on a machine that keeps copies, and its card says so. Whichever the home,
+the clone address is the same, <code>https://&lt;site&gt;/git/&lt;project&gt;.git</code>, with a Smith token or git credential as the
+password, and large files (Git LFS) work with no setup.</p>
+<p>A project on a machine shows <strong>Move to storage</strong> (owners and admins): every branch and tag is pushed into storage,
+and the machines' copies become copies. A project in storage whose repository went missing shows <strong>Restore to
+storage</strong>, which pushes a machine's current copy back.</p>
+<h2 id="user-guide-copies-and-budgets">Copies and budgets</h2>
+<p>Build machines switched on to <strong>Keep copies here</strong> hold copies of the workspace's repositories and large files, as
+a second place beside the home. Each machine has a budget (the workspace default from Settings → Copies, or its
+own, set on its card), and Smith places each item on as many machines as Settings → Copies asks for (two by
+default), choosing the machines with the most unused budget. A machine over its budget hands one item at a time to
+the others. The card says what a machine holds (&quot;uses 12 GB of 50 GB: 8 repositories, 340 large files&quot;) and when
+it is full; a project's card says which machines hold it, and Settings → Copies lists what has fewer copies than
+asked, with the machines that are full.</p>
+<h2 id="user-guide-import-from-github">Import from GitHub</h2>
+<p><strong>Projects → Import from GitHub</strong> (owners and admins) copies every repository of a GitHub organisation into Smith's
+storage. Pick the organisation (from your GitHub link, or the workspace token in Settings, or type its name), tick
+the repositories, and Import. Each becomes a project behind this site's git address, with its <code>smith.json</code> read
+and its build actions ready.</p>
+<p>Files over the threshold (Settings → Large files, 10 MB unless you change it; at most 32 MB, the largest file
+storage takes) are moved to large files, whether or not the repository used Git LFS before. That rewrites the
+repository's history, so such a repository is <strong>detached from GitHub</strong> (Pull and Push would never match again) and
+its original history is kept as a bundle you can download from the card. Repositories with nothing over the
+threshold are imported as they are and stay linked to GitHub unless you untick &quot;Stay linked&quot;.</p>
+<p>The dialog shows progress and lets you Retry a repository that failed or Cancel what has not finished. A repository
+over 1 GB after the rewrite goes to a build machine instead. Import needs an online build machine whose agent is
+current and has git-lfs installed; a queued import says which machine to update.</p>
+<h2 id="user-guide-work-with-ai-on-your-computer">Work with AI on your computer</h2>
+<p>Enroll using <strong>Connect my computer</strong>, install the coding CLI on that computer
+(the chat page can install and sign in to it for you), and sign in there as the
+account running the machine agent. The agent
+reports detected CLI versions; a tool installed only in another user's profile
+may not be visible. Detection refreshes periodically; restart the agent after a
+new install if it is not offered yet.</p>
+<p>Choose <strong>Assistant</strong>, <strong>Project</strong>, <strong>Computer</strong>, <strong>Model</strong> and <strong>Permissions</strong>, then
+write a message and press <strong>Start chat</strong> (or Ctrl+Enter). Only your own enrolled
+computers can use your Claude/Codex login. Work takes place in a separate session
+checkout on that machine, on a Smith session branch. It does not edit your normal
+checkout. Follow-up messages resume that session; <strong>Stop</strong> interrupts its turn.
+Smith records resulting changes as commits on the chat's branch, reports the
+commit, and pushes the branch from your computer with its own Git login after
+each reply (<strong>Keep this chat on my computer only</strong> in the chat's menu stops
+that; <strong>Push branch</strong> pushes once). <strong>Verify</strong> pushes and queues a build of the
+commit. Open and review the pull request yourself. See <a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/docs/cloudflare/ai-chat.md">AI chat</a>
+for details.</p>
+<div class="table-scroll" tabindex="0" aria-label="Scrollable reference table"><table>
+<thead>
+<tr>
+<th>Assistant mode</th>
+<th>What it allows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude Code: Accept edits</td>
+<td>File edits in the session checkout. Other actions requiring approval are refused and reported.</td>
+</tr>
+<tr>
+<td>Claude Code / Codex: Ask before each action</td>
+<td>A card asks before each edit or command: Allow, Always allow in this chat, or No with an instruction. Unanswered questions are declined after 15 minutes.</td>
+</tr>
+<tr>
+<td>Claude Code: Plan only</td>
+<td>Read and plan; no changes.</td>
+</tr>
+<tr>
+<td>Claude Code: Bypass permissions</td>
+<td>Commands on your computer without asking. Choose only for a project you trust.</td>
+</tr>
+<tr>
+<td>Codex: Edit files (sandboxed)</td>
+<td>File changes and commands within the CLI's workspace sandbox; extra access is refused.</td>
+</tr>
+<tr>
+<td>Codex: Read only</td>
+<td>Read and answer; no changes.</td>
+</tr>
+<tr>
+<td>Codex: Full access (no sandbox)</td>
+<td>Commands without the workspace sandbox. Choose only for a project you trust.</td>
+</tr>
+</tbody>
+</table></div>
+<p>If an action is refused in a restricted mode, explain the constraint in your next
+message, switch the chat to <strong>Ask before each action</strong>, or perform that action
+locally. Deployment environment
+credentials are removed from coding turns, but full-access modes still run with
+your OS user's access and can reach other credentials on disk.</p>
+<p>Use <strong>Search chats</strong> to find server-stored chat titles/messages. The chat menu
+supports rename, pin/unpin, archive/unarchive and export; <strong>Archived</strong> shows
+archived conversations. Sending to an archived chat brings it back. Opening a
+chat restores its conversation; it does not rerun a completed turn. Chats are
+private to their owner. Smith stores conversation history and relays CLI events;
+your provider login remains on your computer and provider usage is billed to you.</p>
+<p>The <strong>share local Ollama models</strong> checkbox on your machine card lets other
+workspace members chat on that machine with its local models. It never shares
+your Claude/Codex login or <code>:cloud</code> models; their chats can only edit or read their
+own copy and cannot Push or Verify. Your card lists who is chatting, with a Stop
+for each. <strong>Crew</strong> members are named AI members that work on projects on a
+schedule, after builds or on demand, and report proposals for a person to review;
+see <a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/docs/cloudflare/ai-chat.md#crew">Crew</a>.</p>
+<h2 id="user-guide-let-an-external-coding-assistant-use-smith">Let an external coding assistant use Smith</h2>
+<p>Under <strong>Use Smith from Claude Code or Codex</strong>, create a named token for each tool
+or computer. Choose 7, 30 or 90 days. Uncheck <strong>Allow starting and cancelling
+builds</strong> for read-only access. Copy the token immediately; only its fingerprint is
+stored, so you cannot reveal it later. Follow the displayed plugin/direct MCP
+setup instructions. Windows <code>setx</code> affects newly opened terminals.</p>
+<p>Tokens can read projects, machines, build status, logs and artifacts; tokens with
+build permission can start/cancel builds. They cannot administer membership,
+deploy, or read chats. A build script can still have its own publishing behavior,
+so granting build permission authorizes that project's script. <strong>Revoke</strong> stops
+future token use immediately. Replace an expired/lost token with a new one.
+See <a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/docs/cloudflare/agent-access.md">agent access</a> for full integration instructions.</p>
+<h2 id="user-guide-hosted-settings">Hosted settings</h2>
+<p><strong>Settings → Your account</strong> follows you across workspaces. Display name controls
+how Smith identifies you. E-mail is saved for future notifications; saving it does
+not change your linked sign-in identity or send notifications today. Time zone,
+12/24-hour clock, timestamp style, follow-output and refresh interval (2–60
+seconds) control display. Save the account to apply and persist them.</p>
+<p><strong>Settings → Workspace</strong> affects the selected workspace. Only owners/admins may
+save it; members can inspect it. Workspace name is a display label. Machine
+offline threshold accepts 15–3,600 seconds. <strong>New build replaces a queued build
+of the same product</strong> supersedes matching waiting jobs; it does not cancel running
+work. A project can override it under <strong>Copy and push</strong>: <strong>New build replaces a
+waiting build of the same action on &lt;branch&gt;</strong> keeps only the newest waiting build
+of each action on that branch, so ten quick pushes build once, on the latest commit.
+Read the project's pinned source revision before starting another build.</p>
+<p><strong>Studio access</strong> shares the workspace with every studio Google account: pick
+the role they join with (viewer, operator or admin), or <em>Not shared</em>. They join
+the next time they load the dashboard; turning it off removes them again.
+<strong>Settings → People</strong> lists everyone in the workspace. Owners and admins change
+roles and remove people (a removed person stays out until <strong>Let back in</strong>), and
+anyone can leave. A role set by hand is kept when Studio access changes. Only an
+owner changes ownership, and the last owner cannot leave.</p>
+<p>The optional workspace <strong>GitHub</strong> token is used only to read <code>smith.json</code> when
+nobody in the workspace can link GitHub; it never reaches builds or assistants.
+The <strong>Crew</strong> settings set concurrent runs, a daily spend limit, an optional
+write-only Anthropic API key, whether crew may create projects, and <strong>Stop all crew</strong>.</p>
+<p>The workspace Cloudflare Account ID and write-only API token are injected into
+builds as <code>CLOUDFLARE_ACCOUNT_ID</code> / <code>CLOUDFLARE_API_TOKEN</code> when a machine claims a
+job. Every build in the workspace can read them. Leave the token field blank to
+keep the current token; check <strong>Remove the stored token</strong> to delete it. Saving a
+token does not deploy Smith, run a script or enable built-in hosted handoffs. Scope
+the token to the resources the repository script needs. Removing it does not
+recall credentials already delivered to an active build.</p>
+<h2 id="user-guide-native-coordinator-and-agent">Native coordinator and agent</h2>
+<p>For a single machine, run:</p>
+<pre><code class="language-powershell">.\Smith.exe coordinator --project C:\path\to\repo --with-agent --agent-labels unity6
+</code></pre>
+<p>Open <code>http://localhost:9876</code>. The <strong>Dashboard</strong> shows builds, <strong>Projects</strong> adds
+repositories and selects products/branches/variants, <strong>Agents</strong> filters machine
+status/labels, and <strong>Settings</strong> manages runtime options and users. A separate
+machine runs <code>Smith.exe agent --coordinator http://BUILD-HOST:9876 --labels unity6</code>.
+Use a configured shared <code>--token</code> for non-loopback requests. LAN auto-discovery
+uses UDP 9877 unless you pin the coordinator URL or disable discovery. WAN access
+needs a TLS proxy/tunnel around the native HTTP server.</p>
+<p>The coordinator loads <code>smith-coordinator.json</code> from its working directory or the
+file given by <code>--config</code>. CLI scalar flags override file values; project lists
+append. This is separate from repository <code>smith.json</code>. A valid runtime config is
+copied to <code>.lkg.json</code>; malformed edits show a banner and may use that last good
+copy. Fix the source file and restart before saving settings.</p>
+<p><strong>Trigger</strong> queues a manual build. <strong>Branch</strong> defaults to the primary repository's
+configured branch; <strong>Platform</strong> chooses the OS of the machine that runs the
+command, not automatic cross-compilation. <strong>Clean</strong> deletes untracked and ignored
+files in the agent checkout before building, including build caches. A variant
+comes from the product's discovery matrix. Named chains and <strong>Queue batch</strong> run
+selected builds and gate follow-up work on their success.</p>
+<p><strong>Autobuilds</strong> stores polling rules on the coordinator without changing the repo.
+A new polling rule records a baseline first; it builds on the next commit change.
+Trigger manually for the first build. New commit-driven builds replace still
+queued matching work. Cancelling a running build on new commits is a separate,
+off-by-default setting. The build page includes diagnostics, full-log download,
+artifacts, cancellation and rerun controls. <strong>Clear history</strong> deletes retained
+history/output; it is not a machine cleanup or a project reset.</p>
+<p>Native settings also include these optional integrations. They are configured on
+the native coordinator, independently of hosted workspace settings:</p>
+<div class="table-scroll" tabindex="0" aria-label="Scrollable reference table"><table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>What to supply / what happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Private GitHub repositories</td>
+<td>Save a GitHub token with repository read access; eligible agents receive it for HTTPS Git authentication. Empty uses each machine's own Git credentials. Keep it private.</td>
+</tr>
+<tr>
+<td>Google sign-in</td>
+<td>Set the runtime <code>auth.googleClientId</code>, allowed domains/emails, admin emails and <code>requireLogin</code>. Use a secure origin and <code>curl</code> for verification. See <a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/docs/google-auth.md">Google setup</a>.</td>
+</tr>
+<tr>
+<td>Dynamic DNS</td>
+<td>Supply an existing Cloudflare A record, its zone and a scoped DNS-edit token. Proxied keeps Cloudflare proxying; interval is seconds between public-IP checks. Saving/applying can update that DNS record. Leave record/token unset to disable.</td>
+</tr>
+<tr>
+<td>Discord bot</td>
+<td>Enable with a private bot token, notification channel and optional application/guild IDs. Command channel and role/user lists restrict who can issue commands; empty allowlists broaden access. The host needs Python, discord.py and its Ollama model.</td>
+</tr>
+<tr>
+<td>Bot host and model</td>
+<td>Host node pins a hostname; empty lets Smith select a suitable GPU agent. Ollama URL is reached from that agent. Model names must already be pulled there. These are separate from hosted personal coding chats.</td>
+</tr>
+<tr>
+<td>Bot notifications</td>
+<td>Start/running/success/failure checkboxes select posted events. Running phase notices can be noisy. Confirm deploys requires the bot's confirmation step for publishing actions.</td>
+</tr>
+<tr>
+<td>Users</td>
+<td>Display name, Google e-mail for sign-in, comma-separated Git author e-mails for failure attribution, and own-failures-only notification preference. Removing an entry removes that stored user; inspect the runtime auth allowlists separately.</td>
+</tr>
+<tr>
+<td>Completion hook</td>
+<td>Runtime <code>notifyCommand</code> runs on completion with <code>SMITH_*</code> build details; <code>notifyOn</code> is <code>failed</code> (default) or <code>all</code>. Supply your own script/destination.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Copy <code>smith-coordinator.example.json</code> for runtime configuration, including
+non-UI options. Runtime <code>env</code> reaches every build agent; rule <code>env</code> overrides it.
+Treat injected values as readable by every machine/script that receives a job.
+Native agent workspace housekeeping has a 5,120 MiB free-space floor, a 14-day log
+age cap and a 200-log count cap by default. <code>smith help agent</code> explains their
+override flags; hosted agents use a separate state/lease model.</p>
+<p>Run <code>Smith.exe help coordinator</code>, <code>Smith.exe help agent</code> or
+<code>Smith.exe help hosted-agent</code> for options and examples. Run agents under a real
+build account so Git credentials, toolchains, signing keys and network access
+are available. <a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/README.md">README</a> covers building Smith and OS startup wrappers.</p>
+<h2 id="user-guide-troubleshooting">Troubleshooting</h2>
+<div class="table-scroll" tabindex="0" aria-label="Scrollable reference table"><table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Check / recovery</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Google/GitHub says not linked</td>
+<td>Studio Google accounts never see this. For any other account: sign in with a new invitation, then link that provider from the dashboard.</td>
+</tr>
+<tr>
+<td>Invitation/enrollment rejected</td>
+<td>Use the correct type of code; obtain a fresh one if used or expired. Check workspace selection.</td>
+</tr>
+<tr>
+<td>Machine absent/offline</td>
+<td>Run <code>Setup-Smith.bat status</code> (Windows) or keep its macOS/Linux terminal running; check HTTPS access, correct workspace ID, agent errors and credential revocation.</td>
+</tr>
+<tr>
+<td>Build stays queued</td>
+<td>Check active machines, command OS, all required capability labels and whether another build occupies the agent.</td>
+</tr>
+<tr>
+<td>Checkout fails</td>
+<td>Authenticate Git as the same OS user running the agent; confirm repository access and that the full pinned commit was pushed.</td>
+</tr>
+<tr>
+<td>Smith compiles on one machine only</td>
+<td>Check <code>UNA_ENGINE_PATH</code>, engine revision and installed toolchain on the failing machine. Labels alone do not supply tools.</td>
+</tr>
+<tr>
+<td>Declared artifact missing</td>
+<td>Check working directory, exact filename, size and packaging mode. Hosted artifacts cannot contain wildcards.</td>
+</tr>
+<tr>
+<td>Chat cannot start</td>
+<td>Use personal enrollment, your own online machine and a detected supported CLI. Sign in to that CLI locally.</td>
+</tr>
+<tr>
+<td>Chat action refused</td>
+<td>Read the selected permission mode, or switch to <strong>Ask before each action</strong> to approve actions from the chat.</td>
+</tr>
+<tr>
+<td>Agent workspace already locked</td>
+<td>Stop the existing process or choose another dedicated folder; never copy active credential state to another agent.</td>
+</tr>
+<tr>
+<td>Build becomes lost</td>
+<td>Inspect the original machine and logs before rerunning; scripts may have completed some side effects before interruption.</td>
+</tr>
+<tr>
+<td>Native config banner</td>
+<td>Repair JSON in the indicated runtime config and restart; settings saves are blocked until repaired.</td>
+</tr>
+<tr>
+<td>Dashboard cannot reach Smith</td>
+<td>Check connectivity and retry Refresh. The existing build continues independently of the browser.</td>
+</tr>
+</tbody>
+</table></div>
+<p>For operator provisioning, API limits and release/rollback procedures, use
+<a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/docs/cloudflare/operations.md">operations</a> and <a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/docs/cloudflare/self-release.md">self-release</a>.
+Building a release candidate does not activate it. Deploying the coordinator and
+updating machine agents are separate actions.</p>
+</article>
+<article aria-label="smith.json reference"><h1 id="smith-json">smith.json reference</h1>
+<p>Place <code>smith.json</code> at the repository root and commit it alongside the scripts it
+invokes. It describes a project's native Smith pipeline. It is <strong>not</strong> the
+coordinator runtime config (<code>smith-coordinator.json</code>) or hosted agent credentials.
+Use strict JSON: double quotes, no comments and no trailing commas. Escape Windows
+backslashes as <code>\\</code>, or use forward slashes in repository-relative paths.</p>
+<h2 id="smith-json-a-first-pipeline">A first pipeline</h2>
+<p>Save a build script as <code>tools/build.ps1</code> (and <code>tools/build.sh</code> for Unix machines).
+For example, the PowerShell script should create <code>out</code>, run your toolchain and
+write <code>out/app.zip</code>; exit nonzero on failure. Change the URLs and labels below to
+match your repository and installed build tools.</p>
+<pre><code class="language-json">{
+  &quot;schemaVersion&quot;: 1,
+  &quot;project&quot;: { &quot;id&quot;: &quot;example&quot;, &quot;name&quot;: &quot;Example&quot;, &quot;description&quot;: &quot;Build Example&quot; },
+  &quot;repos&quot;: [{
+    &quot;name&quot;: &quot;main&quot;, &quot;primary&quot;: true,
+    &quot;url&quot;: &quot;https://github.com/your-org/example.git&quot;,
+    &quot;defaultBranch&quot;: &quot;main&quot;, &quot;checkoutDir&quot;: &quot;.&quot;
+  }],
+  &quot;buildProducts&quot;: [{
+    &quot;name&quot;: &quot;build&quot;,
+    &quot;rules&quot;: [{
+      &quot;name&quot;: &quot;build-example&quot;, &quot;enabled&quot;: true, &quot;branches&quot;: [&quot;*&quot;],
+      &quot;nodeSelector&quot;: { &quot;os&quot;: &quot;any&quot;, &quot;labels&quot;: [&quot;example-toolchain&quot;] },
+      &quot;command&quot;: {
+        &quot;windows&quot;: { &quot;interpreter&quot;: &quot;ps1&quot;, &quot;script&quot;: &quot;tools/build.ps1&quot;, &quot;args&quot;: [] },
+        &quot;linux&quot;: { &quot;interpreter&quot;: &quot;sh&quot;, &quot;script&quot;: &quot;tools/build.sh&quot;, &quot;args&quot;: [] },
+        &quot;mac&quot;: { &quot;interpreter&quot;: &quot;sh&quot;, &quot;script&quot;: &quot;tools/build.sh&quot;, &quot;args&quot;: [] }
+      },
+      &quot;workingDir&quot;: &quot;.&quot;, &quot;timeoutSeconds&quot;: 1800, &quot;successExitCodes&quot;: [0],
+      &quot;artifacts&quot;: { &quot;globs&quot;: [&quot;out/app.zip&quot;], &quot;package&quot;: &quot;none&quot; },
+      &quot;handoff&quot;: []
+    }]
+  }],
+  &quot;triggers&quot;: [{ &quot;type&quot;: &quot;manual&quot; }]
+}
+</code></pre>
+<p>Register it with <code>Smith.exe coordinator --project &lt;repo-directory&gt; --with-agent --agent-labels example-toolchain</code>, or add its Git URL in <strong>Projects</strong>. Keep secrets
+out of repository configuration: use the agent OS user's Git credential helper or
+SSH keys and operator-controlled environment/credential files.</p>
+<h2 id="smith-json-top-level-fields">Top-level fields</h2>
+<div class="table-scroll" tabindex="0" aria-label="Scrollable reference table"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type / default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>schemaVersion</code></td>
+<td>integer, <code>1</code></td>
+<td>Current pipeline version. Use <code>1</code>; the parser does not validate future versions.</td>
+</tr>
+<tr>
+<td><code>project.id</code></td>
+<td>string, required</td>
+<td>Stable identifier used in project routes, history and notifications. Choose a unique short ID.</td>
+</tr>
+<tr>
+<td><code>project.name</code></td>
+<td>string, empty</td>
+<td>Human-readable project name.</td>
+</tr>
+<tr>
+<td><code>project.description</code></td>
+<td>string, empty</td>
+<td>What the project builds.</td>
+</tr>
+<tr>
+<td><code>repos</code></td>
+<td>array, empty</td>
+<td>Repositories checked out for each job.</td>
+</tr>
+<tr>
+<td><code>defaultNodeSelector</code></td>
+<td>object, <code>os: &quot;any&quot;</code>, no labels</td>
+<td>Parsed but currently not applied by the scheduler. Put actual requirements on each rule's <code>nodeSelector</code>.</td>
+</tr>
+<tr>
+<td><code>buildProducts</code></td>
+<td>array, empty</td>
+<td>Named actions such as build, test, tray or deploy.</td>
+</tr>
+<tr>
+<td><code>triggers</code></td>
+<td>array, empty</td>
+<td>Manual/poll/schedule/webhook declarations.</td>
+</tr>
+<tr>
+<td><code>chains</code></td>
+<td>array, empty</td>
+<td>Named parallel builds followed by success-gated work.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Unknown fields are generally ignored by the native parser, so a misspelled key
+may silently take its default. Successful JSON parsing does not validate scripts,
+toolchains, every field type or whether a compatible machine exists. Load the
+project and run a harmless test product before adding publishing commands.</p>
+<h2 id="smith-json-repositories">Repositories</h2>
+<p>Each <code>repos</code> entry accepts these fields:</p>
+<div class="table-scroll" tabindex="0" aria-label="Scrollable reference table"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type / default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>string, <code>&quot;main&quot;</code></td>
+<td>Logical name; used by <code>--repo-override projectId/repoName=url</code>. Give repositories distinct names.</td>
+</tr>
+<tr>
+<td><code>primary</code></td>
+<td>boolean, <code>false</code></td>
+<td>Receives the requested build branch/commit. If none is primary, the first entry becomes primary. Declare exactly one.</td>
+</tr>
+<tr>
+<td><code>url</code></td>
+<td>string, empty</td>
+<td>Git clone URL accessible from each eligible agent. Local paths work only where accessible.</td>
+</tr>
+<tr>
+<td><code>defaultBranch</code></td>
+<td>string, <code>&quot;main&quot;</code></td>
+<td>Branch used when no build branch is supplied; secondary repositories use their own default.</td>
+</tr>
+<tr>
+<td><code>checkoutDir</code></td>
+<td>string, <code>&quot;.&quot;</code></td>
+<td>Directory relative to the job workspace. Use distinct subdirectories for secondary repositories.</td>
+</tr>
+</tbody>
+</table></div>
+<p>The branch selector controls the <strong>primary</strong> repository. Secondary repositories
+are not automatically pinned to the primary commit. A config loaded using
+<code>--project</code> refers to your local config; builds execute in agent-managed copies,
+not your editing checkout. The native coordinator's URL-managed projects use its
+own clone to read config/discover variants and watch branches.</p>
+<h2 id="smith-json-build-products-and-rule-selection">Build products and rule selection</h2>
+<p>A product has <code>name</code> (string), <code>rules</code> (array), optional <code>discover</code> (object) and
+optional <code>outputPath</code> (string template). Product names are the actions displayed
+in the UI and used by triggers, chains and artifact inputs.</p>
+<p>Rules are tried in declaration order: the first <strong>enabled</strong> rule whose branch
+patterns match is selected. An empty <code>branches</code> list matches any branch. Put
+specific release rules before catch-all rules. Branch patterns are wildcard
+patterns, not regular expressions: for example <code>main</code>, <code>release/*</code> or <code>*</code>.
+Once selected, a rule waits for a compatible machine; Smith does not pick a later
+rule merely because the first one currently lacks a machine.</p>
+<div class="table-scroll" tabindex="0" aria-label="Scrollable reference table"><table>
+<thead>
+<tr>
+<th>Rule field</th>
+<th>Type / default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>string, empty</td>
+<td>Stable rule name saved with builds. Give each rule a distinct name.</td>
+</tr>
+<tr>
+<td><code>enabled</code></td>
+<td>boolean, <code>true</code></td>
+<td>Disable a rule without deleting it.</td>
+</tr>
+<tr>
+<td><code>branches</code></td>
+<td>string array, empty</td>
+<td>Eligible primary branches.</td>
+</tr>
+<tr>
+<td><code>nodeSelector</code></td>
+<td>object, any OS/no labels</td>
+<td>Additional machine requirements.</td>
+</tr>
+<tr>
+<td><code>command</code></td>
+<td>object keyed by <code>windows</code>, <code>mac</code>, <code>linux</code></td>
+<td>Command or ordered command array for each supported agent OS. Missing OS entries cannot run on that OS.</td>
+</tr>
+<tr>
+<td><code>workingDir</code></td>
+<td>string, <code>&quot;.&quot;</code></td>
+<td>Build working directory relative to the primary repository checkout.</td>
+</tr>
+<tr>
+<td><code>env</code></td>
+<td>string-valued object, empty</td>
+<td>Environment supplied to this job. Overrides coordinator-wide values of the same name.</td>
+</tr>
+<tr>
+<td><code>timeoutSeconds</code></td>
+<td>integer, <code>0</code></td>
+<td>Command timeout; <code>0</code> means no configured command timeout. Set a bound for unattended work.</td>
+</tr>
+<tr>
+<td><code>successExitCodes</code></td>
+<td>integer array, empty → <code>[0]</code></td>
+<td>Exit codes accepted as success for command steps.</td>
+</tr>
+<tr>
+<td><code>artifacts</code></td>
+<td>object</td>
+<td>Outputs to collect after successful commands.</td>
+</tr>
+<tr>
+<td><code>inputs</code></td>
+<td>array, empty</td>
+<td>Artifacts from earlier successful products to stage before building.</td>
+</tr>
+<tr>
+<td><code>handoff</code></td>
+<td>array, empty</td>
+<td>Ordered post-build operations after artifact collection.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="smith-json-machine-selectors">Machine selectors</h3>
+<p><code>os</code> is <code>&quot;any&quot;</code>, <code>&quot;windows&quot;</code>, <code>&quot;mac&quot;</code> or <code>&quot;linux&quot;</code>. <strong>All</strong> labels must be
+present, with exact case-sensitive names. Rule and variant label requirements
+combine; a variant OS overrides the rule OS. A selected target platform overrides
+that OS selection; it does
+not install a cross-compilation toolchain. Avoid conflicting OS requirements.
+<code>preferOs</code> is soft affinity: a compatible preferred OS gets a short grace period
+when online, then another compatible OS may run the job. It is not a hard pin.</p>
+<h3 id="smith-json-commands">Commands</h3>
+<p>Each command has <code>interpreter</code>, <code>script</code> and optional string-array <code>args</code>.
+Supported interpreters are <code>ps1</code> (PowerShell), <code>bat</code> (cmd), <code>sh</code> (<code>/bin/sh</code>),
+<code>python</code> (<code>python</code> on PATH), and <code>exe</code> (executable). Tools must be available to the
+OS user running the agent. Shell operators such as <code>&amp;&amp;</code> in <code>args</code> are ordinary
+arguments; put shell logic in your script.</p>
+<p><strong>Blender.</strong> Agents look for Blender where it installs (its Windows and macOS
+installers leave PATH alone): PATH, <code>Program Files\Blender Foundation\Blender &lt;version&gt;</code>, <code>/Applications/Blender.app</code>, unpacked <code>blender-&lt;version&gt;-linux-x64</code>
+folders in <code>/opt</code> and the home directory, and Steam libraries. The newest version wins. A
+machine that has Blender advertises the label <code>blender</code>, gives scripts its path as
+<code>SMITH_BLENDER</code>, and runs an <code>exe</code> step whose <code>script</code> is <code>blender</code> with it, so one
+command works on every OS:</p>
+<pre><code class="language-json">&quot;nodeSelector&quot;: { &quot;os&quot;: &quot;any&quot;, &quot;labels&quot;: [&quot;blender&quot;] },
+&quot;command&quot;: {
+  &quot;windows&quot;: { &quot;interpreter&quot;: &quot;exe&quot;, &quot;script&quot;: &quot;blender&quot;, &quot;args&quot;: [&quot;-b&quot;, &quot;--factory-startup&quot;, &quot;--python-exit-code&quot;, &quot;1&quot;, &quot;-P&quot;, &quot;scene.py&quot;] },
+  &quot;linux&quot;:   { &quot;interpreter&quot;: &quot;exe&quot;, &quot;script&quot;: &quot;blender&quot;, &quot;args&quot;: [&quot;-b&quot;, &quot;--factory-startup&quot;, &quot;--python-exit-code&quot;, &quot;1&quot;, &quot;-P&quot;, &quot;scene.py&quot;] },
+  &quot;mac&quot;:     { &quot;interpreter&quot;: &quot;exe&quot;, &quot;script&quot;: &quot;blender&quot;, &quot;args&quot;: [&quot;-b&quot;, &quot;--factory-startup&quot;, &quot;--python-exit-code&quot;, &quot;1&quot;, &quot;-P&quot;, &quot;scene.py&quot;] }
+},
+&quot;artifacts&quot;: { &quot;globs&quot;: [&quot;render.png&quot;], &quot;package&quot;: &quot;none&quot; }
+</code></pre>
+<p><code>-b</code> renders without opening a window. Save the image from the script
+(<code>scene.render.filepath</code> plus <code>bpy.ops.render.render(write_still=True)</code>) so it
+lands at the exact path: <code>-o</code>/<code>-f</code> append frame numbers. The agent detects Blender
+when it starts, so restart it after installing Blender.</p>
+<p>An array runs commands in order on the same machine, stopping when a step returns
+an unacceptable exit code. Each step is a new process: changes to its shell's
+environment do not survive to the next step. Use rule <code>env</code>, generated files or
+a single wrapper script for shared setup.</p>
+<pre><code class="language-json">{
+  &quot;windows&quot;: [
+    { &quot;interpreter&quot;: &quot;ps1&quot;, &quot;script&quot;: &quot;tools/configure.ps1&quot;, &quot;args&quot;: [] },
+    { &quot;interpreter&quot;: &quot;ps1&quot;, &quot;script&quot;: &quot;tools/build.ps1&quot;, &quot;args&quot;: [&quot;-Config&quot;, &quot;Release&quot;] }
+  ]
+}
+</code></pre>
+<h3 id="smith-json-templates-and-environment">Templates and environment</h3>
+<p>The native coordinator substitutes <code>${NAME}</code> in <strong>command arguments</strong>, environment
+values, product <code>outputPath</code>, artifact globs and <code>archiveName</code>. Command <code>script</code>,
+<code>workingDir</code>, selectors and repository URLs are not templated. Unknown variables
+remain literal; a misspelling can therefore create the wrong path.</p>
+<div class="table-scroll" tabindex="0" aria-label="Scrollable reference table"><table>
+<thead>
+<tr>
+<th>Template</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>${PROJECT_ID}</code></td>
+<td>Project identifier</td>
+</tr>
+<tr>
+<td><code>${BUILD_NUMBER}</code></td>
+<td>Build number</td>
+</tr>
+<tr>
+<td><code>${BRANCH}</code></td>
+<td>Primary build branch</td>
+</tr>
+<tr>
+<td><code>${COMMIT}</code> / <code>${COMMIT_SHORT}</code></td>
+<td>Primary revision / first seven characters, when resolved</td>
+</tr>
+<tr>
+<td><code>${VARIANT}</code> / <code>${VARIANT_SLUG}</code></td>
+<td>Selected variant and its filesystem-friendly slug by default</td>
+</tr>
+<tr>
+<td><code>${PROFILE}</code> / <code>${PROFILE_SLUG}</code></td>
+<td>Same pair when <code>discover.as</code> is <code>&quot;PROFILE&quot;</code></td>
+</tr>
+<tr>
+<td><code>${OUTPUT}</code></td>
+<td>Resolved product <code>outputPath</code>, or empty if omitted</td>
+</tr>
+</tbody>
+</table></div>
+<p>Variant names are lowercase-slugged with non-alphanumeric runs replaced by <code>-</code>.
+Use the chosen <code>discover.as</code> name and its <code>_SLUG</code> suffix, not both VARIANT and
+PROFILE interchangeably. Templates are configuration substitutions, not
+automatically exported environment variables. Add, for example,
+<code>&quot;env&quot;: {&quot;OUTPUT_DIR&quot;: &quot;${OUTPUT}&quot;}</code> for your script to read an output path.
+Build processes also receive <code>SMITH_BUILD_NUMBER</code>, <code>SMITH_BRANCH</code>, <code>SMITH_COMMIT</code>
+and <code>SMITH_PROJECT</code>. A revision resolved only during agent checkout can be absent
+from earlier coordinator substitutions; prefer <code>SMITH_COMMIT</code> inside the script.</p>
+<h2 id="smith-json-variants-and-output-folders">Variants and output folders</h2>
+<p><code>discover.type: &quot;list&quot;</code> expands <code>values</code> into a matrix. <code>&quot;files&quot;</code> scans the
+repository using <code>glob</code> and names each variant from a matching filename without
+its extension. Duplicate names are removed; results are sorted. <code>as</code> defaults to
+<code>&quot;VARIANT&quot;</code>. <code>classify</code> is an ordered array of <code>{match, os, labels, preferOs}</code>;
+<code>match</code> is an ECMAScript regular expression searched in the variant name. The
+first matching classifier wins; an empty match is a catch-all. Invalid regexes do
+not match. This is different from branch and artifact wildcard syntax.</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;list&quot;, &quot;values&quot;: [&quot;windows-release&quot;, &quot;linux-release&quot;], &quot;as&quot;: &quot;PROFILE&quot;,
+  &quot;classify&quot;: [
+    { &quot;match&quot;: &quot;^windows-&quot;, &quot;os&quot;: &quot;windows&quot; },
+    { &quot;match&quot;: &quot;^linux-&quot;, &quot;os&quot;: &quot;linux&quot; }
+  ]
+}
+</code></pre>
+<p>Set product <code>outputPath</code> to <code>&quot;out/${PROFILE_SLUG}&quot;</code>, pass <code>${OUTPUT}</code> as a script
+argument, and write output there. With <code>outputPath</code> and <strong>no explicit artifact
+globs</strong>, native Smith collects that entire output folder into a zip named after
+the variant slug (or product if there is no variant). To collect nothing, omit
+<code>outputPath</code> as well as globs. <code>artifacts.exclude</code> still applies.</p>
+<h2 id="smith-json-artifacts-and-inputs">Artifacts and inputs</h2>
+<p><code>artifacts.globs</code> is a string array relative to the build working directory.
+<code>*</code> matches inside one path segment; <code>**</code> spans directories. Use <code>&quot;out/**&quot;</code> for a
+whole tree. <code>exclude</code> subtracts wildcard patterns. <code>excludeDefaults</code> defaults to
+<code>true</code> and applies Smith's built-in never-ship filters for source/tool caches and
+credentials; leave it on unless you have inspected the output.</p>
+<p><code>package: &quot;zip&quot;</code> bundles matches into an archive; <code>archiveName</code> supplies its name.
+<code>&quot;none&quot;</code> uploads files individually with a count cap. Use a zip for many files
+and folder structure. Native collection warns when no files match; do not assume
+an empty artifact list means the build script produced the expected output.</p>
+<p>An input is <code>{ &quot;product&quot;: &quot;build&quot;, &quot;variant&quot;: &quot;windows-release&quot; }</code>. Smith looks
+for the latest successful build of that product/variant on the same project and
+branch with collected artifacts. Omit <code>variant</code> to require an unvaried build.
+Inputs are staged into the consuming build's working directory before its command
+runs. Zip inputs are extracted there; other files keep their artifact filename.
+Use compatible producing/consuming directory layouts and avoid filename collisions.
+Missing eligible input artifacts fail dispatch with an <code>INPUTS</code> error. Chain follow-up jobs prefer the
+matching builds from their own batch. See <a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/docs/FEATURES.md">features</a> for fan-in examples.</p>
+<h2 id="smith-json-handoffs">Handoffs</h2>
+<p>Handoffs execute in order <strong>after</strong> commands and artifact collection. Each has
+<code>name</code>, <code>type</code>, optional <code>continueOnError</code> (default <code>false</code>) and fields for its
+type. A failed step normally fails the build and stops later steps.</p>
+<div class="table-scroll" tabindex="0" aria-label="Scrollable reference table"><table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Fields / behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>collect</code></td>
+<td>No extra work; records that normal artifact collection already happened.</td>
+</tr>
+<tr>
+<td><code>script</code></td>
+<td><code>script</code> required; <code>interpreter</code> defaults to <code>exe</code>; optional <code>workingDir</code> and space-separated <code>args</code> string. Unlike build-command args, this is not an argument array or a shell-aware quoting parser. Use a wrapper for complex arguments.</td>
+</tr>
+<tr>
+<td><code>copyShare</code></td>
+<td><code>dest</code> required; optional <code>from</code> relative to working directory. Recursively copies and overwrites files on a share accessible to the agent OS user.</td>
+</tr>
+<tr>
+<td><code>steam</code></td>
+<td><code>appBuildVdf</code> and/or ordered <code>appBuildVdfs</code>; optional <code>steamcmd</code>, <code>desc</code>, <code>credentialRef</code>. Uploads through steamcmd; username/password come from local credentials.</td>
+</tr>
+<tr>
+<td><code>itch</code></td>
+<td><code>target</code> or <code>user</code> + <code>game</code> + optional <code>channel</code>; <code>path</code> or <code>contentRoot</code>; optional <code>butler</code>, <code>credentialRef</code>. Publishes through butler.</td>
+</tr>
+<tr>
+<td><code>cloudflare</code></td>
+<td><code>command</code> (<code>deploy</code> default or <code>pages</code>), optional <code>dir</code>/<code>contentRoot</code>, <code>project</code>, <code>env</code>, <code>wrangler</code>, <code>credentialRef</code>. Runs Wrangler and can publish externally.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Credentials referenced by <code>credentialRef</code> are read from
+<code>smith-agent-credentials.json</code> in the agent process's current directory. The
+matching JSON object holds <code>username</code>/<code>password</code> for Steam, <code>apiKey</code> for itch,
+or <code>apiToken</code>/<code>accountId</code> for Cloudflare. Keep this private file outside the repo.
+Handoff fields substitute <code>PROJECT_ID</code>, <code>BUILD_NUMBER</code>, <code>BRANCH</code>, <code>COMMIT</code>,
+<code>COMMIT_SHORT</code>, <code>WORKSPACE</code>, <code>ARTIFACTS_DIR</code>, and <code>TARGET_ENV</code> when the environment
+defines it. <code>WORKSPACE</code>/<code>ARTIFACTS_DIR</code> refer to the build working directory.</p>
+<p>A <code>deploy</code> product name has no special meaning. Deploying happens only when its
+script or handoff does so. Keep publishing out of a first test pipeline.</p>
+<h2 id="smith-json-triggers-and-chains">Triggers and chains</h2>
+<div class="table-scroll" tabindex="0" aria-label="Scrollable reference table"><table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>Fields / behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>manual</code></td>
+<td>Records manual intent; use a dashboard action or <code>smith trigger</code>.</td>
+</tr>
+<tr>
+<td><code>poll</code></td>
+<td><code>branches</code>, <code>intervalSeconds</code>, <code>product</code>; watches for changed revisions. An initial poll baselines without building.</td>
+</tr>
+<tr>
+<td><code>schedule</code></td>
+<td><code>cron</code> (five fields: minute, hour, day-of-month, month, weekday), <code>branches</code>, <code>product</code>. Runs in the native coordinator's local time.</td>
+</tr>
+<tr>
+<td><code>webhook</code></td>
+<td><code>branches</code>, <code>product</code>; deliver Git webhook requests to <code>/api/webhook/git/&lt;projectId&gt;</code>. Configure reachability/authentication for your deployment.</td>
+</tr>
+</tbody>
+</table></div>
+<p>An omitted trigger product selects the first build product. Poll intervals of
+<code>0</code> use the coordinator default. Repo triggers and UI autobuilds are independent;
+avoid declaring the same automation twice. Manual work is not collapsed with
+automatic pushes; queued matching commit-driven work is superseded by newer work.</p>
+<p>Chains contain <code>name</code>, <code>builds</code>, <code>then</code>, optional <code>onFailure</code> (<code>finish</code> or <code>cancel</code>)
+and <code>pinCommit</code> (boolean). Each step is <code>{product, variants}</code>; variants accept
+names/slugs, and an empty list selects all discovered variants. <code>builds</code> fan out;
+<code>then</code> is queued only after <strong>every</strong> initial build succeeds. Default pinning
+resolves the primary commit once for the batch. This does not pin secondary
+repositories. <code>onFailure</code> controls whether sibling builds finish or are cancelled.</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;release-candidate&quot;,
+  &quot;builds&quot;: [{ &quot;product&quot;: &quot;build&quot;, &quot;variants&quot;: [] }],
+  &quot;then&quot;: [{ &quot;product&quot;: &quot;package&quot;, &quot;variants&quot;: [] }],
+  &quot;onFailure&quot;: &quot;finish&quot;, &quot;pinCommit&quot;: true
+}
+</code></pre>
+<h2 id="smith-json-this-repository-s-smith-json">This repository's smith.json</h2>
+<div class="table-scroll" tabindex="0" aria-label="Scrollable reference table"><table>
+<thead>
+<tr>
+<th>Product</th>
+<th>What it does / requirements</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>self-release</code></td>
+<td>Windows release candidate via <code>tools/self-release/build.ps1</code>; <code>una-engine</code> label; collects the release zip without activating it.</td>
+</tr>
+<tr>
+<td><code>build-experiment</code></td>
+<td>Builds/packages experiment agents; only <code>feature/cloudflare-experiment</code>; <code>una-engine</code> label; zips the package directory.</td>
+</tr>
+<tr>
+<td><code>build</code></td>
+<td>Native Release console binary on Windows/Linux/macOS; <code>una-engine</code> label; collects <code>smith.zip</code>.</td>
+</tr>
+<tr>
+<td><code>test</code></td>
+<td>Runs OS-specific test scripts; <code>una-engine</code> label; no artifact collection.</td>
+</tr>
+<tr>
+<td><code>tray</code></td>
+<td>Optional Windows/macOS desktop tray; <code>una-engine</code> and <code>wxwidgets</code> labels; collects <code>smith-tray.zip</code>.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Two poll triggers watch <code>feature/cloudflare-experiment</code> for <code>build-experiment</code>
+and <code>main</code> for <code>test</code>, every 120 seconds; manual triggering is also declared.
+These are native pipeline definitions. A hosted preset is a separate object and
+does not gain the repository's zip collector or trigger behavior automatically.</p>
+<h2 id="smith-json-hosted-experiment-compatibility">Hosted experiment compatibility</h2>
+<p><strong>Add project</strong> on the hosted dashboard reads a repository's <code>smith.json</code> at the
+branch tip and offers one action per product (per discovered variant for
+<code>discover</code>), using the first enabled rule whose <code>branches</code> match. Handoff steps,
+<code>inputs</code> (those actions show as unavailable), artifact globs and zip packaging,
+<code>triggers</code> and <code>chains</code> are not supported there yet; exact files with
+<code>package: &quot;none&quot;</code> are collected. A repository with no <code>smith.json</code> builds from a
+default Smith detects (a root build script, a <code>package.json</code> or an <code>index.html</code>);
+the card shows it, and committing it as <code>smith.json</code> is the way to change it. See
+<a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/docs/cloudflare/operations.md">operations</a>.</p>
+<p>The hosted API also accepts operator-prepared project presets with <code>id</code>, <code>name</code>, <code>repoUrl</code>,
+<code>branch</code>, full 40-character lowercase <code>commit</code>, and <code>products</code>. Product entries
+use <code>name</code>, <code>description</code>, <code>labels</code>, <code>commands</code> (<strong>plural</strong>), <code>workingDir</code>,
+<code>timeoutSeconds</code>, <code>env</code>, and <code>artifacts</code>. This is not the <code>smith.json</code> shape.
+Unknown preset fields are rejected. The current project API accepts GitHub HTTPS
+or SSH URLs without embedded credentials, 1–20 unique products, 1–10 repository
+script commands per OS and timeouts of 1–7,200 seconds (default 1,800).</p>
+<p>Hosted presets support exact-file <code>package: &quot;none&quot;</code> artifacts (four files maximum,
+20 MiB each), but not native glob/zip collection, <code>discover</code>, <code>inputs</code>, <code>handoff</code>,
+<code>triggers</code> or <code>chains</code>. Package outputs in the repository script.
+Commands can run publishing tools if explicitly configured; workspace Cloudflare
+credentials are available to builds when set. Hosted coding chat turns remove
+deployment environment credentials and use separate session checkouts.
+See <a href="#user-guide">user guide</a> and <a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/docs/cloudflare/operations.md">operations</a>.</p>
+</article>
+<article aria-label="Planned user tasks"><h1 id="task-stubs">Planned user tasks</h1>
+<p>These are <strong>workflow stubs</strong>, not working controls or promises of a release date.
+They describe missing tasks, the current workaround and what completion should
+look like. They appear in shipped Help so users can discover the gap. No stub
+queues a job, changes permissions, rotates a credential or publishes anything.
+A stub marked <strong>Available</strong> has shipped; it stays listed so existing links keep working.</p>
+<h2 id="task-stubs-task-01-add-a-hosted-project-from-smith-json">TASK-01 · Add a hosted project from smith.json</h2>
+<p><strong>Status:</strong> Available. <strong>Add project</strong> on the dashboard picks a repository your
+GitHub link can see (or takes a Git URL) and an optional branch, reads its
+<code>smith.json</code> and offers one build action per product; each build runs the branch
+tip and records the commit. Actions that need <code>inputs</code> show as unavailable, and
+handoff steps, artifact globs/zip packaging and <code>smith.json</code> triggers are not
+imported yet. Operator-prepared pinned presets still work through the API. See
+<a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/docs/cloudflare/operations.md">operations</a>.</p>
+<h2 id="task-stubs-task-02-validate-configuration-before-running">TASK-02 · Validate configuration before running</h2>
+<p><strong>Status:</strong> Planned. <strong>User goal:</strong> Catch unknown/misspelled keys, wrong types,
+missing scripts, conflicting selectors and impossible output paths before a build.
+<strong>Inputs:</strong> <code>smith.json</code> and repository root, plus intended coordinator mode.
+<strong>Current workaround:</strong> Check strict JSON, compare the reference and load/run a
+non-publishing test product. <strong>Completion:</strong> A <code>smith validate</code> command with useful
+field-path errors, exit status and hosted compatibility report; editor schema
+support could use the same rules. It must not execute build or deploy commands.</p>
+<h2 id="task-stubs-task-03-retry-a-build-or-update-its-pinned-revision">TASK-03 · Retry a build or update its pinned revision</h2>
+<p><strong>Status:</strong> Planned for the hosted dashboard. <strong>User goal:</strong> Re-run the exact failed
+revision, or deliberately move a prepared project to a newer commit.
+<strong>Inputs:</strong> Previous job ID or new full Git commit. <strong>Current workaround:</strong> Queue
+the product again for the same preset; ask an owner/admin to update its commit.
+<strong>Completion:</strong> Separate same-revision rerun from new-revision update; show source
+and command changes before queueing; preserve request idempotency and history.
+Lost attempts require checking for partial side effects before replacement.</p>
+<h2 id="task-stubs-task-04-pause-resume-and-rotate-a-machine-credential">TASK-04 · Pause, resume and rotate a machine credential</h2>
+<p><strong>Status:</strong> Planned dashboard workflow. <strong>User goal:</strong> Maintain an agent without
+losing an active build, then replace its credential without creating confusing
+duplicate machines. <strong>Inputs:</strong> Machine identity, desired pause/rotation and fresh
+enrollment. <strong>Current workaround:</strong> Admin drain API or local drain file for a
+graceful build stop; Disconnect + fresh dedicated directory for revocation.
+<strong>Completion:</strong> Show active work, drain progress and permissions; resume explicitly;
+rotate after owner verification and invalidate the old credential. Keep forced
+revocation distinct from a pause. Stop personal chats before shutdown.</p>
+<h2 id="task-stubs-task-05-manage-workspace-members-and-invitations">TASK-05 · Manage workspace members and invitations</h2>
+<p><strong>Status:</strong> Partly available. Studio Google accounts sign in without an invitation
+and join workspaces shared through <strong>Settings → Workspace → Studio access</strong>.
+<strong>Settings → People</strong> reviews and changes roles, removes people (they stay out
+until let back in) and lets anyone leave; the last owner is protected. <strong>Still
+planned:</strong> Inviting someone outside the studio into a specific workspace (today the
+operator's <code>NewInvite.bat</code> creates a separate account with its own workspaces),
+seeing which machines/tokens a person retains, and an audit trail.</p>
+<h2 id="task-stubs-task-06-approve-an-assistant-action-from-the-dashboard">TASK-06 · Approve an assistant action from the dashboard</h2>
+<p><strong>Status:</strong> Available. Choose <strong>Ask before each action</strong> as the chat's permission
+mode (Claude Code or Codex). A card in the chat asks before each edit or command:
+<strong>Allow</strong>, <strong>Always allow … in this chat</strong>, or <strong>No, tell … what to do instead</strong>.
+Unanswered questions are declined after 15 minutes. <strong>Ask again before …</strong> in the
+chat menu forgets the tools you always allowed. See <a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/docs/cloudflare/ai-chat.md">AI chat</a>.</p>
+<h2 id="task-stubs-task-07-review-and-publish-an-ai-session-s-changes">TASK-07 · Review and publish an AI session's changes</h2>
+<p><strong>Status:</strong> Partly available. Smith pushes the chat's own branch
+(<code>smith/ai-&lt;title&gt;-&lt;id&gt;</code>) from your computer with its Git login after each reply
+(<strong>Push branch</strong> does it once more), and <strong>Verify ▸ Push and build</strong> also queues a
+build of that commit. Diff review and opening the pull request are still yours. <strong>User goal:</strong> Inspect what an assistant changed and turn
+it into a reviewed branch/PR. <strong>Current workaround:</strong> Push the branch, then review
+and open the pull request in your Git host. <strong>Completion:</strong> Show diff and validation results, choose the destination explicitly,
+publish only after approval and link the result to the chat. Never auto-merge or
+publish solely because an assistant turn completed.</p>
+<h2 id="task-stubs-task-08-notifications-retention-and-export">TASK-08 · Notifications, retention and export</h2>
+<p><strong>Status:</strong> Planned hosted build workflow. <strong>User goal:</strong> Receive actionable build
+results and manage stored output before reaching experiment limits.
+<strong>Inputs:</strong> Notification destination/preferences, retention period, selected jobs.
+<strong>Current workaround:</strong> Follow the dashboard; account e-mail is saved but delivery
+is not implemented. Chat export already works and is separate from build export.
+<strong>Completion:</strong> Opt-in result notifications, authenticated full-log/build metadata
+export, storage usage display and deliberate cleanup that preserves active work.
+Current hosted limits include 1,000 lifetime jobs/workspace and 4 MiB output/job.</p>
+<h2 id="task-stubs-task-09-run-a-chat-with-a-shared-local-model">TASK-09 · Run a chat with a shared local model</h2>
+<p><strong>Status:</strong> Available. When a machine's owner ticks <em>Let workspace members chat on
+this machine with its local Ollama models</em>, other members can pick that computer
+(marked <em>shared models</em>) and an <em>Ollama · &lt;model&gt;</em> <strong>Model</strong> in a new chat. Those
+chats only edit or read their own copy of the project, cannot Push or Verify, and
+never use the owner's Claude/Codex login or <code>:cloud</code> models. The owner sees who is
+chatting and can stop each one. See <a href="https://github.com/Red-Marmoset/smith/blob/feature/cloudflare-experiment/docs/cloudflare/ai-chat.md">AI chat</a>.</p>
+<h2 id="task-stubs-task-10-hosted-pipelines-and-other-operating-systems">TASK-10 · Hosted pipelines and other operating systems</h2>
+<p><strong>Status:</strong> Partly available. Hosted agents run on Windows, macOS and Linux, and
+builds die with the agent on every OS. macOS/Linux agents do not start at logon
+yet, and their packages show as <em>coming soon</em> until they are published.
+<strong>User goal:</strong> Build matrices/chains, consume artifacts, poll branches and trigger
+on commits as native agents do. <strong>Inputs:</strong> Validated pipeline and platform
+capabilities. <strong>Current workaround:</strong> Use native Smith for those pipeline features
+and exact script-packaged artifacts for the experiment. <strong>Completion:</strong> Explicit
+trigger, packaging/input and handoff semantics; guarded publishing and retention.
+Native feature availability must not imply hosted support before these are implemented.</p>
+</article></main></div></body></html>

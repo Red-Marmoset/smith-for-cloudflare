@@ -1,0 +1,41 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "smith-experiment",
+  "account_id": "bab833826312fe2b0c81bd7608a6dbf7",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "exp.redmarmosetstudios.com", "custom_domain": true }],
+  // Cloudflare Artifacts copies go into the workspace's own account when its Settings hold an API token,
+  // otherwise into Smith's backend account (SMITH_ARTIFACTS_ACCOUNT_ID below, this Worker's own account),
+  // reached through the ARTIFACTS binding further down, so no secret is needed. The Worker secret
+  // SMITH_ARTIFACTS_TOKEN (an API token with Artifacts Edit) is only a fallback for a deployment without it.
+  // RELEASE_SHA / RELEASE_VERSION: the commit and its version (VERSION + "." + the commit count, e.g. 0.1.0.239),
+  // both stamped by DeployWorker.bat; /health reports them and the dashboard shows the version beside "Experiment".
+  // GOOGLE_ALLOWED_DOMAIN: a Google Workspace account on this domain signs in without an invitation;
+  // its first sign-in creates the Smith user (oauth.ts). Empty means invite-only.
+  "vars": { "ORIGIN": "https://exp.redmarmosetstudios.com", "GOOGLE_ALLOWED_DOMAIN": "redmarmosetstudios.com", "RELEASE_SHA": "development", "RELEASE_VERSION": "development", "ARTIFACTS_NAMESPACE": "default", "SMITH_ARTIFACTS_ACCOUNT_ID": "bab833826312fe2b0c81bd7608a6dbf7", "R2_ACCOUNT_ID": "bab833826312fe2b0c81bd7608a6dbf7", "GIT_BUCKET": "smith-experiment-git", "LFS_PROXY_MAX_BYTES": "104857600" },
+  "version_metadata": { "binding": "DEPLOYMENT" },
+  // The dashboard is deployed from dist/: public/ with every JS/CSS/HTML file minified (tools/build-static.mjs).
+  // Wrangler runs the build before `wrangler dev` and `wrangler deploy`.
+  "build": { "command": "node tools/build-static.mjs", "watch_dir": "public" },
+  "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": true },
+  "artifacts": [{ "binding": "ARTIFACTS", "namespace": "default", "remote": true }],
+  // RELEASES: agent packages and build artifacts. GIT: Smith-hosted repositories' relay mailbox (relay/, deleted after a
+  // day by a lifecycle rule) and bundle backups (backups/). Create the bucket once with its lifecycle rules; see
+  // docs/cloudflare/operations.md "Smith-hosted repositories". Large files (Git LFS) live under lfs/ in GIT and are never
+  // expired by a rule; R2_ACCOUNT_ID + GIT_BUCKET (vars) and the secrets R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY switch
+  // large-file transfers from proxied (capped by LFS_PROXY_MAX_BYTES, the plan's request-body limit) to presigned.
+  "r2_buckets": [{ "binding": "RELEASES", "bucket_name": "smith-experiment-releases" }, { "binding": "GIT", "bucket_name": "smith-experiment-git" }],
+  // A brake on git requests per credential and per client address for failures; the real limits are the workspace quotas.
+  "ratelimits": [{ "name": "GIT_RATE", "namespace_id": "1001", "simple": { "limit": 300, "period": 60 } }, { "name": "GIT_FAIL_RATE", "namespace_id": "1002", "simple": { "limit": 30, "period": 60 } }],
+  "durable_objects": { "bindings": [{ "name": "WORKSPACES", "class_name": "WorkspaceCoordinator" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["WorkspaceCoordinator"] }],
+  "d1_databases": [{ "binding": "DB", "database_name": "smith-experiment-identity", "database_id": "c3f109c1-abbc-447e-ad9f-a592ac71b31f", "migrations_dir": "migrations" }],
+  // Starting a project from a 100 MB zip unpacks, hashes and packs it in the workspace object (first-commit.ts): allow
+  // up to five minutes of CPU for that one request rather than the default 30 seconds. Other requests use far less.
+  "limits": { "cpu_ms": 300000 },
+  "observability": { "enabled": true, "head_sampling_rate": 1 }
+}

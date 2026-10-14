@@ -1,0 +1,17 @@
+{
+    "name": "SmithCoordinator",
+    "version": "0.1.0",
+    "type": "Engine",
+    "description": "Smith coordinator: HTTP API, build queue, persistence, SSE live logs, static web UI",
+    "dependencies": ["SmithCore", "SmithProtocol", "SmithAgent", "Http", "Log"],
+    "externalDependencies": ["json"],
+    "sources": {
+        "common": ["Coordinator.cpp", "CoordinatorJobs.cpp", "CoordinatorNodes.cpp", "CoordinatorProjects.cpp", "CoordinatorTriggers.cpp", "CoordinatorAuth.cpp", "CoordinatorAutobuilds.cpp", "CoordinatorBranches.cpp", "CoordinatorBatches.cpp", "CoordinatorDns.cpp", "CoordinatorDiscord.cpp", "WebAssets.cpp"]
+    },
+    "exports": {
+        "headers": ["Coordinator.h"],
+        "libraries": []
+    },
+    "platforms": ["Windows", "Linux", "macOS"]
+}
+

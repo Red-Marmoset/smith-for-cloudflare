@@ -1,0 +1,3 @@
+# Python deps for smith-discord-bot.py (installed into a venv by the Smith agent).
+discord.py>=2.3
+requests>=2.28

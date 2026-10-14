@@ -1,0 +1,12 @@
+{
+    "name": "SmithProtocolTest",
+    "version": "0.1.0",
+    "type": "console",
+    "description": "Round-trip tests for SmithProtocol wire JSON",
+    "dependencies": ["SmithProtocol", "Test"],
+    "exports": {
+        "headers": [],
+        "libraries": []
+    },
+    "platforms": ["Windows", "Linux", "macOS"]
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "origin": "https://smith.example.com",
+  "workerName": "smith",
+  "accountId": "00000000000000000000000000000000",
+  "nodePath": "C:\\Program Files\\nodejs\\node.exe",
+  "wranglerPath": "C:\\SmithOperator\\toolchain\\node_modules\\wrangler\\bin\\wrangler.js",
+  "wranglerConfig": "C:\\SmithOperator\\trusted-wrangler.json",
+  "stateDirectory": "C:\\SmithOperator\\promotion",
+  "userSessionFile": "C:\\SmithOperator\\tester.json",
+  "migrationHashes": {
+    "0001_identity.sql": "REPLACE_WITH_SHA256_OF_EACH_REVIEWED_CURRENT_MIGRATION"
+  },
+  "agent": {
+    "executable": "C:\\SmithAgent\\current\\Smith.exe",
+    "workspace": "C:\\SmithAgent\\workspace",
+    "workspaceId": "REPLACE_WITH_64_CHARACTER_WORKSPACE_ID",
+    "labels": ["una-engine"],
+    "pidFile": "C:\\SmithOperator\\promotion\\agent.pid",
+    "drainFile": "C:\\SmithAgent\\workspace\\promotion-drain",
+    "installRoot": "C:\\SmithAgent\\releases"
+  },
+  "timeouts": { "drainSeconds": 300, "healthSeconds": 120 }
+}

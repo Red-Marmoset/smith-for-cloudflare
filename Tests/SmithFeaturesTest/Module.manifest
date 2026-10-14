@@ -1,0 +1,12 @@
+{
+    "name": "SmithFeaturesTest",
+    "version": "0.1.0",
+    "type": "console",
+    "description": "Tests for multi-step builds (stepsByOs parsing) and matrix variant lists",
+    "dependencies": ["SmithCore", "Test"],
+    "exports": {
+        "headers": [],
+        "libraries": []
+    },
+    "platforms": ["Windows", "Linux", "macOS"]
+}

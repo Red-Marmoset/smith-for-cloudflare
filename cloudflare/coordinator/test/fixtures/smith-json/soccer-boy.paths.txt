@@ -1,0 +1,23 @@
+Assets/Settings/Build Profiles.meta
+Assets/Settings/Build Profiles/App Store (Mac).asset
+Assets/Settings/Build Profiles/App Store (Mac).asset.meta
+Assets/Settings/Build Profiles/App Store (iOS).asset
+Assets/Settings/Build Profiles/App Store (iOS).asset.meta
+Assets/Settings/Build Profiles/Demo Steam (Mac).asset
+Assets/Settings/Build Profiles/Demo Steam (Windows).asset
+Assets/Settings/Build Profiles/Jamaine - Demo Build (Mac).asset
+Assets/Settings/Build Profiles/Jamaine - Demo Build.asset
+Assets/Settings/Build Profiles/Jamaine - Demo Steam (Mac).asset
+Assets/Settings/Build Profiles/Jamaine - Demo Steam.asset
+Assets/Settings/Build Profiles/No Steam (Linux).asset
+Assets/Settings/Build Profiles/No Steam (Mac).asset
+Assets/Settings/Build Profiles/No Steam (Windows).asset
+Assets/Settings/Build Profiles/Sebastian - Demo Build.asset
+Assets/Settings/Build Profiles/Steam (Linux).asset
+Assets/Settings/Build Profiles/Steam (Mac).asset
+Assets/Settings/Build Profiles/Steam (Windows).asset
+Assets/Settings/Build Profiles/Steam (Windows).asset.meta
+ProjectSettings/ProjectVersion.txt
+smith.json
+tools/smith-build.ps1
+tools/smith-build.sh

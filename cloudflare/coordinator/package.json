@@ -1,0 +1,28 @@
+{
+  "name": "smith-cloudflare-coordinator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "types": "wrangler types",
+    "typecheck": "wrangler types && tsc --noEmit",
+    "test": "node tools/build-static.mjs && vitest run",
+    "verify": "npm run build:markdown && npm run build:help && npm run typecheck && npm test && wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "build:markdown": "node tools/build-markdown.mjs",
+    "build:help": "node tools/build-help.mjs",
+    "build:static": "node tools/build-static.mjs",
+    "build:images": "node tools/build-images.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.3.6",
+    "@types/node": "24.19.1",
+    "esbuild": "0.28.2",
+    "markdown-it": "15.0.2",
+    "sharp": "0.35.5",
+    "typescript": "7.0.2",
+    "vitest": "4.1.11",
+    "wrangler": "4.147.0"
+  }
+}

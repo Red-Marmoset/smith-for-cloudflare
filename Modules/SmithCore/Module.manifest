@@ -1,0 +1,24 @@
+{
+    "name": "SmithCore",
+    "version": "0.1.0",
+    "type": "Engine",
+    "description": "Smith domain core: streaming subprocess, persistence, config, smith.json parsing and node matching (no HTTP, no wx)",
+    "dependencies": ["SmithProtocol", "Log"],
+    "externalDependencies": ["json"],
+    "sources": {
+        "common": ["Uuid.cpp", "TimeUtil.cpp", "NodeMatcher.cpp", "Config.cpp", "RepoConfig.cpp", "Store.cpp", "GitRepo.cpp", "Handoff.cpp", "Discovery.cpp", "Variants.cpp", "BuildDiagnostics.cpp", "BuildDiagnosticsJson.cpp", "GitUrl.cpp", "Base64.cpp", "GoogleAuth.cpp", "Capabilities.cpp", "CloudflareDns.cpp", "Inputs.cpp", "Batches.cpp", "Strings.cpp", "JsonFile.cpp", "Housekeeping.cpp", "RetryPolicy.cpp"],
+        "Windows": ["Process_Windows.cpp", "Discovery_Windows.cpp"],
+        "Linux": ["Process_Posix.cpp", "Discovery_Posix.cpp"],
+        "macOS": ["Process_Posix.cpp", "Discovery_Posix.cpp"]
+    },
+    "exports": {
+        "headers": ["Process.h", "Uuid.h", "TimeUtil.h", "Domain.h", "BuildRecord.h", "NodeMatcher.h", "Config.h", "RepoConfig.h", "Store.h", "GitRepo.h", "Handoff.h", "Discovery.h", "BuildDiagnostics.h", "BuildDiagnosticsJson.h", "GitUrl.h", "Base64.h", "GoogleAuth.h", "Capabilities.h", "CloudflareDns.h", "Inputs.h", "Batches.h", "Strings.h", "JsonFile.h", "Housekeeping.h", "RetryPolicy.h"],
+        "libraries": []
+    },
+    "platformLibraries": {
+        "Windows": ["ws2_32.lib"]
+    },
+    "platforms": ["Windows", "Linux", "macOS"]
+}
+
+

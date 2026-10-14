@@ -1,0 +1,15 @@
+{
+    "name": "SmithApp",
+    "version": "0.1.0",
+    "type": "Engine",
+    "description": "Smith entry point and subcommand dispatch (coordinator | agent)",
+    "dependencies": ["SmithCoordinator", "SmithAgent", "SmithCore", "Log", "Http"],
+    "sources": {
+        "common": ["Main.cpp", "App.cpp"]
+    },
+    "exports": {
+        "headers": ["App.h"],
+        "libraries": []
+    },
+    "platforms": ["Windows", "Linux", "macOS"]
+}

@@ -1,0 +1,34 @@
+{
+  "logsVisibleInBrowser": true,
+  "trigger": "Signed-in hosted dashboard Build button",
+  "workspaceId": "685db4a0650747f6040f176efb1a53489624c9a63aba4e2a67bdeb6210889c6e",
+  "agentPlatform": "windows-x64",
+  "nativeAssertions": 732,
+  "packageTests": 4,
+  "workerSourceCommit": "5d3fe62d49ea0a49579cf78e74dd88a58d7d9568",
+  "nativeSourceCommit": "9257d1ade8899c89fd85cdab280dada164f9960f",
+  "origin": "https://exp.redmarmosetstudios.com",
+  "packageSha256": "52090d8c0457f038c0f7c9e41cacc6f1e2bdb406e112c64627ea91ca7ca10578",
+  "authenticatedDownloadVerified": true,
+  "nativeTestProjects": 7,
+  "job": {
+    "id": "27ad1a53-7337-4b3c-b51c-c77b6cfb7174",
+    "projectId": "smith",
+    "product": "build",
+    "state": "success",
+    "nodeId": "e78bb006-79dc-46de-90df-27b6064b339f",
+    "attemptId": "9ac7e3c8-0f28-4824-a5a6-f5a292bf1243",
+    "result": {
+      "status": "success",
+      "exitCode": 0,
+      "durationMs": 79762,
+      "message": "Build completed"
+    },
+    "createdAt": 1791114660049,
+    "updatedAt": 1791114741319,
+    "revision": 7
+  },
+  "workerTests": 25,
+  "workerDeployment": "0a6f670e-9a0e-46c0-bd5b-9bb727096243",
+  "verifiedAt": "2026-10-04T11:53:32.7470528Z"
+}

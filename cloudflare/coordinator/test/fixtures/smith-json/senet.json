@@ -1,0 +1,397 @@
+{
+    "schemaVersion": 1,
+    "project": {
+        "id": "senet",
+        "name": "Senet",
+        "description": "Web Senet (Node/esbuild + Cloudflare Workers)"
+    },
+    "repos": [
+        {
+            "name": "main",
+            "primary": true,
+            "url": "git@github.com:Red-Marmoset/senet.git",
+            "defaultBranch": "master",
+            "checkoutDir": "."
+        }
+    ],
+    "buildProducts": [
+        {
+            "name": "build-check",
+            "rules": [
+                {
+                    "name": "ci-build",
+                    "enabled": true,
+                    "branches": [
+                        "*"
+                    ],
+                    "nodeSelector": {
+                        "os": "windows",
+                        "labels": [
+                            "node"
+                        ]
+                    },
+                    "command": {
+                        "windows": {
+                            "interpreter": "bat",
+                            "script": "build.bat",
+                            "args": [
+                                "--allow-detached-deploy",
+                                "--target-env",
+                                "staging",
+                                "--skip-pull",
+                                "--skip-tests",
+                                "--skip-e2e",
+                                "--skip-migrations",
+                                "--skip-worker",
+                                "--skip-itch",
+                                "--skip-push"
+                            ]
+                        }
+                    },
+                    "workingDir": ".",
+                    "env": {
+                        "SENET_ASSUME_YES": "1"
+                    },
+                    "timeoutSeconds": 1800,
+                    "successExitCodes": [
+                        0
+                    ],
+                    "artifacts": {
+                        "globs": [
+                            "dist/static/*.html"
+                        ],
+                        "package": "none"
+                    },
+                    "handoff": [
+                        {
+                            "name": "collect-on-coordinator",
+                            "type": "collect"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "web-deploy",
+            "rules": [
+                {
+                    "name": "deploy-prod",
+                    "enabled": true,
+                    "branches": [
+                        "master"
+                    ],
+                    "nodeSelector": {
+                        "os": "windows",
+                        "labels": [
+                            "node",
+                            "wrangler",
+                            "butler"
+                        ]
+                    },
+                    "command": {
+                        "windows": {
+                            "interpreter": "bat",
+                            "script": "build.bat",
+                            "args": []
+                        }
+                    },
+                    "workingDir": ".",
+                    "env": {
+                        "SENET_ASSUME_YES": "1"
+                    },
+                    "timeoutSeconds": 2400,
+                    "successExitCodes": [
+                        0
+                    ],
+                    "artifacts": {
+                        "globs": [
+                            "dist/**"
+                        ],
+                        "package": "zip"
+                    },
+                    "handoff": []
+                },
+                {
+                    "name": "deploy-staging",
+                    "enabled": true,
+                    "branches": [
+                        "staging"
+                    ],
+                    "nodeSelector": {
+                        "os": "windows",
+                        "labels": [
+                            "node",
+                            "wrangler",
+                            "butler"
+                        ]
+                    },
+                    "command": {
+                        "windows": {
+                            "interpreter": "bat",
+                            "script": "build.bat",
+                            "args": []
+                        }
+                    },
+                    "workingDir": ".",
+                    "env": {},
+                    "timeoutSeconds": 2400,
+                    "successExitCodes": [
+                        0
+                    ],
+                    "artifacts": {
+                        "globs": [
+                            "dist/**"
+                        ],
+                        "package": "zip"
+                    },
+                    "handoff": []
+                }
+            ]
+        },
+        {
+            "name": "d1-limit-workaround",
+            "description": "Same as web-deploy but passes --skip-migrations: deploys the static site + Worker without touching D1. Use while the account is over its D1 daily quota (migrations apply would be rejected and abort the build). Apply pending migrations by hand after the 00:00 UTC reset: cd worker && npx wrangler d1 migrations apply senet-ratings --remote (add --env staging for senet-ratings-staging).",
+            "rules": [
+                {
+                    "name": "deploy-prod-skip-migrations",
+                    "enabled": true,
+                    "branches": [
+                        "master"
+                    ],
+                    "nodeSelector": {
+                        "os": "windows",
+                        "labels": [
+                            "node",
+                            "wrangler",
+                            "butler"
+                        ]
+                    },
+                    "command": {
+                        "windows": {
+                            "interpreter": "bat",
+                            "script": "build.bat",
+                            "args": [
+                                "--skip-migrations"
+                            ]
+                        }
+                    },
+                    "workingDir": ".",
+                    "env": {
+                        "SENET_ASSUME_YES": "1"
+                    },
+                    "timeoutSeconds": 2400,
+                    "successExitCodes": [
+                        0
+                    ],
+                    "artifacts": {
+                        "globs": [
+                            "dist/**"
+                        ],
+                        "package": "zip"
+                    },
+                    "handoff": []
+                },
+                {
+                    "name": "deploy-staging-skip-migrations",
+                    "enabled": true,
+                    "branches": [
+                        "staging"
+                    ],
+                    "nodeSelector": {
+                        "os": "windows",
+                        "labels": [
+                            "node",
+                            "wrangler",
+                            "butler"
+                        ]
+                    },
+                    "command": {
+                        "windows": {
+                            "interpreter": "bat",
+                            "script": "build.bat",
+                            "args": [
+                                "--skip-migrations"
+                            ]
+                        }
+                    },
+                    "workingDir": ".",
+                    "env": {},
+                    "timeoutSeconds": 2400,
+                    "successExitCodes": [
+                        0
+                    ],
+                    "artifacts": {
+                        "globs": [
+                            "dist/**"
+                        ],
+                        "package": "zip"
+                    },
+                    "handoff": []
+                }
+            ]
+        },
+        {
+            "name": "stats-reconcile-prod",
+            "description": "Every three hours, repairs recent production counters from completion records. For manual full-history totals, run reconcile-stats.bat --all-time.",
+            "rules": [
+                {
+                    "name": "reconcile-prod",
+                    "enabled": true,
+                    "branches": [
+                        "staging"
+                    ],
+                    "nodeSelector": {
+                        "os": "windows",
+                        "labels": [
+                            "node",
+                            "wrangler"
+                        ]
+                    },
+                    "command": {
+                        "windows": {
+                            "interpreter": "bat",
+                            "script": "reconcile-stats.bat",
+                            "args": []
+                        }
+                    },
+                    "workingDir": ".",
+                    "env": {},
+                    "timeoutSeconds": 600,
+                    "successExitCodes": [0],
+                    "artifacts": { "globs": [], "package": "none" },
+                    "handoff": []
+                }
+            ]
+        },
+        {
+            "name": "stats-reconcile-staging",
+            "description": "Manual staging counter repair from recent completion records.",
+            "rules": [
+                {
+                    "name": "reconcile-staging",
+                    "enabled": true,
+                    "branches": [
+                        "staging"
+                    ],
+                    "nodeSelector": {
+                        "os": "windows",
+                        "labels": [
+                            "node",
+                            "wrangler"
+                        ]
+                    },
+                    "command": {
+                        "windows": {
+                            "interpreter": "bat",
+                            "script": "reconcile-stats.bat",
+                            "args": ["--staging"]
+                        }
+                    },
+                    "workingDir": ".",
+                    "env": {},
+                    "timeoutSeconds": 600,
+                    "successExitCodes": [0],
+                    "artifacts": { "globs": [], "package": "none" },
+                    "handoff": []
+                }
+            ]
+        },
+        {
+            "name": "ai-ladder",
+            "description": "Plays one ranked AI-vs-AI game for EVERY possible pairing of the 18-tier Ennead roster, in every rated ruleset: 153 pairings x 6 rulesets = 918 games per round. Each game is submitted to the ratings worker with its full move log, so it counts towards the leaderboard Elo and is watchable afterwards as a replay at ?game=<id>. Rounds ACCUMULATE - nothing is reset - so re-running this is how the AI side of the leaderboard keeps adapting over time. Costs ~12,000 D1 rows written per round (~12% of the free-tier 100,000/day, counting the index maintenance D1 bills for; the allowance is per account rather than per database, shared with real players, and resets at 00:00 UTC), so leave a day between rounds or pass --budget / --pace. That figure is arithmetic - check it against the D1 dashboard after a round. Deploys nothing and writes nothing back to the repo; the only output is rows in D1 plus the collected round summary.",
+            "rules": [
+                {
+                    "name": "ladder-round-prod",
+                    "enabled": true,
+                    "branches": [
+                        "master"
+                    ],
+                    "nodeSelector": {
+                        "os": "windows",
+                        "labels": [
+                            "node"
+                        ]
+                    },
+                    "command": {
+                        "windows": {
+                            "interpreter": "bat",
+                            "script": "run-ai-ladder.bat",
+                            "args": []
+                        }
+                    },
+                    "workingDir": ".",
+                    "env": {
+                        "SENET_ASSUME_YES": "1"
+                    },
+                    "timeoutSeconds": 7200,
+                    "successExitCodes": [
+                        0
+                    ],
+                    "artifacts": {
+                        "globs": [
+                            "dist/ai-ladder-round.json"
+                        ],
+                        "package": "none"
+                    },
+                    "handoff": [
+                        {
+                            "name": "collect-on-coordinator",
+                            "type": "collect"
+                        }
+                    ]
+                },
+                {
+                    "name": "ladder-round-staging",
+                    "enabled": true,
+                    "branches": [
+                        "staging"
+                    ],
+                    "nodeSelector": {
+                        "os": "windows",
+                        "labels": [
+                            "node"
+                        ]
+                    },
+                    "command": {
+                        "windows": {
+                            "interpreter": "bat",
+                            "script": "run-ai-ladder.bat",
+                            "args": [
+                                "--staging"
+                            ]
+                        }
+                    },
+                    "workingDir": ".",
+                    "env": {},
+                    "timeoutSeconds": 7200,
+                    "successExitCodes": [
+                        0
+                    ],
+                    "artifacts": {
+                        "globs": [
+                            "dist/ai-ladder-round.json"
+                        ],
+                        "package": "none"
+                    },
+                    "handoff": [
+                        {
+                            "name": "collect-on-coordinator",
+                            "type": "collect"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "triggers": [
+        {
+            "type": "manual"
+        },
+        {
+            "type": "schedule",
+            "cron": "0 */3 * * *",
+            "product": "stats-reconcile-prod",
+            "branches": ["staging"]
+        }
+    ]
+}

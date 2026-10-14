@@ -1,0 +1,7 @@
+{
+    "name": "SmithDiscoveryTest",
+    "type": "console",
+    "version": "0.1.0",
+    "modules": ["SmithDiscoveryTest"],
+    "compiler": "msvc"
+}

@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Smith · Experiment</title>
+  <link rel="icon" href="/smith-icon.png">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/" aria-label="Smith home"><img src="/smith-icon-84.webp" alt="" width="42" height="42"><strong>Smith</strong><span class="experiment">Experiment</span><span class="release" id="release" hidden></span></a>
+    <div class="account" id="account" hidden><span id="account-label">Experiment workspace</span><span id="link-accounts" class="link-accounts"></span><a class="quiet button-link" href="/help.html" title="Setup, smith.json, agents and troubleshooting">Help</a><a class="quiet button-link" id="open-settings" href="#settings">Settings</a><button class="quiet" id="logout" title="End this browser session; builds and agent enrollment continue." aria-description="End this browser session; builds and agent enrollment continue.">Sign out</button></div>
+  </header>
+  <main>
+    <p id="starting" class="empty" role="status">Connecting to Smith…</p>
+    <div id="error" class="notice error" role="alert" hidden><span id="error-message"></span><button id="dismiss-error" class="quiet" aria-label="Dismiss error">Dismiss</button></div>
+    <section id="login" class="login" hidden aria-labelledby="login-title">
+      <div class="login-brand"><img src="/smith-icon-84.webp" alt="" width="40" height="40"><strong>Smith</strong><span>Experiment</span><span class="release" id="login-release" hidden></span></div>
+      <h1 id="login-title">Sign in</h1>
+      <div id="signin-providers" class="signin-providers" hidden></div>
+      <p id="signin-or" class="muted small signin-or" hidden>or use an invitation code</p>
+      <form id="login-form">
+        <label for="invite-code">Invitation code</label>
+        <div class="login-row">
+          <input id="invite-code" title="One-use sign-in invitation from the operator. This is different from a machine enrollment code." aria-description="One-use sign-in invitation from the operator. This is different from a machine enrollment code." type="password" autocomplete="off" spellcheck="false" autocapitalize="none" minlength="32" maxlength="256" required>
+          <button type="submit">Sign in</button>
+        </div>
+      </form>
+      <p class="login-note">Invitation codes come from the experiment operator (or NewInvite.bat) and work once. Google and GitHub work after you link them from the dashboard. You stay signed in for seven days. <a href="/help.html#user-guide-first-hosted-build">Sign-in help</a></p>
+    </section>
+    <section id="dashboard" hidden aria-label="Build dashboard">
+      <div class="workspace-bar"><div><label for="workspace">Workspace</label><select id="workspace" title="Choose where projects, machines and builds live. Workspaces keep their own membership and settings." aria-description="Choose where projects, machines and builds live. Workspaces keep their own membership and settings." aria-label="Workspace"></select></div><button id="rename-workspace" title="Give this workspace a name of your own." aria-description="Give this workspace a name of your own." class="quiet" hidden>Rename</button><form id="rename-workspace-form" class="rename-workspace" hidden><div><label for="rename-workspace-name">Workspace name</label><input id="rename-workspace-name" maxlength="64" required autocomplete="off"></div><button type="submit">Save</button><button type="button" id="rename-workspace-cancel" class="quiet">Cancel</button></form><button id="create-workspace" title="Create an empty workspace you own. An operator still needs to prepare its projects." aria-description="Create an empty workspace you own. An operator still needs to prepare its projects." class="quiet">Create workspace</button><span id="connection" class="connection" role="status">Connecting…</span><button id="refresh" title="Fetch current builds and machine status now; builds continue if this browser is closed." aria-description="Fetch current builds and machine status now; builds continue if this browser is closed." class="quiet">Refresh</button></div>
+      <p id="no-workspaces" class="empty" hidden>Create a workspace to connect your first machine. Prepared projects are provided by the experiment operator.</p>
+      <details class="inline-help"><summary>Workspaces, projects and builds — help</summary><p>A workspace keeps its own projects, machines and settings. Add project reads a repository’s smith.json; its actions build the newest commit on the branch, while an operator-prepared project builds its pinned revision. A queued build waits for the required OS and every capability label. <a href="/help.html#user-guide-first-hosted-build">First build guide</a> · <a href="/help.html#task-stubs">Planned workflows</a></p></details>
+      <div id="workspace-content" hidden>
+        <div class="overview">
+          <section class="projects" aria-labelledby="projects-title"><div class="section-heading"><h1 id="projects-title">Projects</h1><span class="section-actions"><button id="fold-projects" class="quiet" hidden>Fold all</button><button id="add-project" class="quiet">Add project</button><button id="open-import" class="quiet" type="button" title="Copy every repository of a GitHub organisation into Smith’s storage, moving large files to Git LFS." hidden>Import from GitHub</button></span></div><div id="projects"></div></section>
+          <aside class="machines" aria-labelledby="machines-title"><div class="section-heading"><h2 id="machines-title">Machines</h2><div class="heading-actions"><button id="enroll-personal" title="Associate this computer with you so your local Claude Code or Codex login can run your chats. Use a separate build enrollment for builds." aria-description="Associate this computer with you so your local Claude Code or Codex login can run your chats. Use a separate build enrollment for builds." class="quiet">Connect my computer</button><button id="enroll" title="Enroll shared build capacity using a one-use, ten-minute code; this does not share anyone’s coding login." aria-description="Enroll shared build capacity using a one-use, ten-minute code; this does not share anyone’s coding login." class="quiet">Connect build machine</button></div></div><div id="nodes"></div><p class="muted small">A build starts when a compatible machine is online.</p></aside>
+        </div>
+        <section class="chat" aria-labelledby="chat-heading">
+          <details class="inline-help"><summary>Coding assistants and permissions — help</summary><p>Connect your own computer, install Claude Code or Codex and sign in locally as the user running the machine agent. Each chat uses a separate session checkout. Restricted modes refuse actions needing extra access; Ask before each action lets you approve each one here. Full-access modes can run commands with your OS user's access. <a href="/help.html#user-guide-work-with-ai-on-your-computer">Chat, history and permission help</a></p></details>
+          <div class="section-heading"><div><h2 id="chat-heading">Work with AI</h2><p class="muted small">Runs Claude Code or Codex on your own computer, signed in with your own account. Smith keeps your chats and relays the conversation; your login never leaves your computer.</p></div><button id="new-chat" title="Start a separate conversation in a new session checkout on your own computer." aria-description="Start a separate conversation in a new session checkout on your own computer." class="quiet">New chat</button></div>
+          <div class="chat-layout">
+            <div class="chat-sidebar">
+              <input id="chat-search" title="Search your stored chat titles and messages in this workspace." aria-description="Search your stored chat titles and messages in this workspace." type="search" placeholder="Search chats" aria-label="Search chats" autocomplete="off">
+              <div class="chat-tabs" role="group" aria-label="Which chats"><button id="chat-tab-active" title="Show active and pinned conversations." aria-description="Show active and pinned conversations." class="quiet selected" type="button" aria-pressed="true">Chats</button><button id="chat-tab-archived" title="Show archived conversations; sending a new message brings a chat back." aria-description="Show archived conversations; sending a new message brings a chat back." class="quiet" type="button" aria-pressed="false">Archived</button></div>
+              <nav id="chat-sessions" class="chat-sessions" aria-label="Your chats"></nav>
+            </div>
+            <div class="chat-main">
+              <div id="chat-header" class="chat-header" hidden><div><strong id="chat-title-text"></strong><p id="chat-meta" class="muted small"></p></div><div class="chat-header-actions"><button id="chat-stop" title="Interrupt the current assistant turn. Existing files and recorded commits are kept." aria-description="Interrupt the current assistant turn. Existing files and recorded commits are kept." class="quiet danger" hidden>Stop</button><button id="chat-push" class="quiet" hidden title="Push this chat's branch from its computer, with that computer's own Git login">Push branch</button><span id="chat-verify" hidden></span><button id="chat-pull" class="quiet" hidden title="Propose this chat's pushed branch for merging, as a Smith pull request">Open pull request</button><span id="chat-header-menu"></span></div></div>
+              <div id="chat-log" class="chat-log" aria-live="polite"></div>
+              <form id="chat-form" class="chat-form">
+                <div id="chat-new-fields" class="chat-fields">
+                  <div><label for="chat-tool">Assistant</label><select id="chat-tool" title="Choose a coding CLI detected on your own online computer. Sign in to it locally as the agent OS user." aria-description="Choose a coding CLI detected on your own online computer. Sign in to it locally as the agent OS user."></select></div>
+                  <div><label for="chat-project">Project</label><select id="chat-project" title="Select the prepared repository used as the starting point for this session’s separate checkout." aria-description="Select the prepared repository used as the starting point for this session’s separate checkout."></select></div>
+                  <div><label for="chat-machine">Computer</label><select id="chat-machine" title="Only your own enrolled computers can run a coding chat with your provider login." aria-description="Only your own enrolled computers can run a coding chat with your provider login."></select></div>
+                  <div><label for="chat-brain">Model</label><select id="chat-brain"></select></div>
+                </div>
+                <div id="chat-setup-notice" class="chat-setup-notice" role="alert" hidden></div>
+                <div id="chat-setup-task" class="chat-setup-task" hidden></div>
+                <label id="chat-api-key" class="chat-api-key small" hidden><input type="checkbox" id="chat-use-api-key"> <span id="chat-api-key-text"></span></label>
+                <label for="chat-input">Message</label>
+                <textarea id="chat-input" title="Send instructions to the selected coding assistant. Ctrl+Enter submits. Changes occur in the session checkout." aria-description="Send instructions to the selected coding assistant. Ctrl+Enter submits. Changes occur in the session checkout." rows="3" maxlength="16000" placeholder="Ask Claude Code to work on this project… (Ctrl+Enter to send)"></textarea>
+                <div class="chat-actions">
+                  <div><label for="chat-mode">Permissions</label><select id="chat-mode"></select></div>
+                  <button type="submit" id="chat-send" title="Start or continue this chat. The coding CLI runs on the selected computer using the chosen permission mode." aria-description="Start or continue this chat. The coding CLI runs on the selected computer using the chosen permission mode.">Start chat</button>
+                </div>
+                <p id="chat-hint" class="muted small" role="status"></p>
+              </form>
+            </div>
+          </div>
+        </section>
+        <section id="pulls" class="pulls" aria-labelledby="pulls-heading">
+          <div class="section-heading"><div><h2 id="pulls-heading">Pull requests</h2><p class="muted small">Branches proposed for merging into a project, by crew members and from chats. Review the change here and merge it, wherever the project is hosted: a build machine does the merge and pushes it, never forced.</p></div>
+            <div class="field pulls-filter"><label for="pulls-filter">Show</label><select id="pulls-filter"><option value="open" selected>Open</option><option value="merged">Merged</option><option value="closed">Closed</option><option value="all">All</option></select></div></div>
+          <div id="pulls-list" class="crew-list pulls-list"></div>
+          <div id="pull-detail" class="crew-detail pull-detail" role="region" aria-labelledby="pull-title" hidden></div>
+        </section>
+        <section id="crew" class="crew" aria-labelledby="crew-heading">
+          <div class="section-heading"><div><h2 id="crew-heading">Crew</h2><p class="muted small">Named AI members that look after this workspace’s projects on their own: on a schedule, after builds, or when someone presses Run now. Each works on its own branch of a project and reports back for a person to review; nothing is merged or deployed for you. A crew member runs with this machine’s Claude Code sign-in, the workspace’s Anthropic API key, or a model on the machine. Owners choose which machines run crew.</p></div><button id="new-crew-member" class="quiet" hidden>New crew member</button></div>
+          <p class="muted small"><a href="#settings">Crew activity and spending controls</a>: stop all crew, limit concurrency and API spending, or disable expensive check-in work. Owners and admins save workspace controls; operators can pause individual members.</p>
+          <div id="crew-tabs" class="crew-tabs" role="tablist" aria-label="Crew views">
+            <button id="crew-tab-members" class="quiet selected" type="button" role="tab" aria-selected="true" aria-controls="crew-members-panel">Members</button>
+            <button id="crew-tab-review" class="quiet" type="button" role="tab" aria-selected="false" aria-controls="crew-review-panel" tabindex="-1">Review</button>
+            <button id="crew-tab-messages" class="quiet" type="button" role="tab" aria-selected="false" aria-controls="crew-messages-panel" tabindex="-1">Messages</button>
+            <button id="crew-tab-events" class="quiet" type="button" role="tab" aria-selected="false" aria-controls="crew-events-panel" tabindex="-1">Events</button>
+          </div>
+          <div id="crew-members-panel" class="crew-panel" role="tabpanel" aria-labelledby="crew-tab-members">
+            <p id="crew-notice" class="crew-notice" role="status" hidden></p>
+            <p id="crew-filter" class="muted small crew-filter" hidden><span id="crew-filter-text"></span> <button id="crew-filter-clear" class="build-link" type="button">Show every member</button></p>
+            <div id="crew-members" class="crew-members"></div>
+            <div id="crew-detail" class="crew-detail" role="region" aria-labelledby="crew-detail-title" hidden>
+              <div class="section-heading"><div><h3 id="crew-detail-title" tabindex="-1"></h3><p id="crew-detail-meta" class="muted small"></p></div><button id="crew-detail-close" class="quiet" type="button">Close</button></div>
+              <div id="crew-detail-info"></div>
+              <h4 class="crew-subheading">Runs</h4>
+              <div id="crew-runs" class="crew-runs"></div>
+              <div id="crew-run" class="crew-run" hidden>
+                <div class="chat-header"><div><strong id="crew-run-title"></strong><p id="crew-run-meta" class="muted small"></p></div><button id="crew-run-stop" class="quiet danger" type="button" hidden>Stop run</button></div>
+                <div class="crew-run-layout">
+                  <div id="crew-run-log" class="chat-log crew-run-log" aria-live="polite" aria-label="Run transcript"></div>
+                  <aside id="crew-run-report" class="crew-report" aria-label="Run report"></aside>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="crew-events-panel" class="crew-panel" role="tabpanel" aria-labelledby="crew-tab-events" hidden>
+            <p class="muted small">Check-ins select only opted-in agents. Inspect selection reasons, pinned commits, budgets, writer scopes and findings here. Dry run selection starts no work.</p>
+            <form id="crew-checkin-form" class="crew-checkin-form" hidden>
+              <div class="crew-form-grid">
+                <div><label for="crew-checkin-project">Project</label><select id="crew-checkin-project" required></select></div>
+                <div><label for="crew-checkin-kind">Check-in type</label><select id="crew-checkin-kind"><option value="manual">Manual review</option><option value="release_candidate">Release candidate</option><option value="commit">Commit</option></select></div>
+                <div><label for="crew-checkin-branch">Branch</label><input id="crew-checkin-branch" required maxlength="240" autocomplete="off"></div>
+                <div><label for="crew-checkin-base">Base commit</label><input id="crew-checkin-base" required pattern="[a-f0-9]{40}" minlength="40" maxlength="40" spellcheck="false" placeholder="Full 40-character commit hash"></div>
+                <div><label for="crew-checkin-head">Head commit</label><input id="crew-checkin-head" required pattern="[a-f0-9]{40}" minlength="40" maxlength="40" spellcheck="false" placeholder="Full 40-character commit hash"></div>
+              </div>
+              <button id="crew-checkin-submit" type="submit">Submit check-in</button>
+            </form>
+            <div id="crew-events-list" class="crew-list"></div>
+            <button id="crew-events-more" type="button" class="quiet" hidden>Older events</button>
+            <div id="crew-event-detail" class="crew-detail" role="region" aria-label="Check-in details" hidden></div>
+          </div>
+          <div id="crew-review-panel" class="crew-panel" role="tabpanel" aria-labelledby="crew-tab-review" hidden>
+            <p class="muted small">Proposals from every crew member, newest first. A person verifies, accepts or dismisses each one: Verify runs the branch’s build script on a build machine (without the workspace’s secrets), Accept marks it for you to merge from its branch, and a dismissal’s note becomes feedback in the member’s memory.</p>
+            <div id="crew-review" class="crew-list"></div>
+          </div>
+          <div id="crew-messages-panel" class="crew-panel" role="tabpanel" aria-labelledby="crew-tab-messages" hidden>
+            <p class="muted small">Messages between crew members, and from people to them, newest first. A member reads the ones to it or to everyone at the start of its next run, as information it may weigh, never as orders.</p>
+            <form id="crew-message-form" class="crew-message-form" hidden>
+              <div class="field"><label for="crew-message-to">To</label><select id="crew-message-to"></select></div>
+              <div class="field"><label for="crew-message-body">Message</label><textarea id="crew-message-body" rows="3" required></textarea></div>
+              <p id="crew-message-hint" class="crew-form-hint" role="status"></p>
+              <button id="send-crew-message" type="submit">Send</button>
+            </form>
+            <div class="field crew-messages-bar"><label for="crew-messages-filter">Show</label><select id="crew-messages-filter"></select></div>
+            <div id="crew-messages" class="crew-list"></div>
+          </div>
+        </section>
+        <section class="agent-access" aria-labelledby="agents-heading">
+          <details class="inline-help"><summary>Smith tokens — help</summary><p>A Smith token connects an external assistant to this workspace's build API. It is separate from your provider login, agent enrollment and Cloudflare credentials. Copy it once, use a descriptive name per tool and revoke it when no longer needed. <a href="/help.html#user-guide-let-an-external-coding-assistant-use-smith">Token setup and scope</a></p></details>
+          <div class="section-heading"><div><h2 id="agents-heading">Tokens for Claude Code, Codex and git</h2><p class="muted small">Give your own coding agent a Smith token so it can see projects and machines, start builds and read their logs as you. It cannot deploy, change members or read your chats. The same token is the password for cloning Smith’s copies of your repositories (Clone on a project card); one that can start builds can push to them.</p></div></div>
+          <div class="agent-layout">
+            <form id="token-form" class="token-form">
+              <div><label for="token-name">Token name</label><input id="token-name" title="Use a name identifying the tool or computer. This name is a label, not the secret token." aria-description="Use a name identifying the tool or computer. This name is a label, not the secret token." maxlength="64" required placeholder="e.g. Laptop Claude Code"></div>
+              <div><label for="token-expiry">Expires after</label><select id="token-expiry" title="Choose when the Smith token stops working. Replace or revoke it earlier if needed." aria-description="Choose when the Smith token stops working. Replace or revoke it earlier if needed."><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option></select></div>
+              <label class="check"><input type="checkbox" id="token-build" title="Allow this token to start and cancel project builds. Uncheck for read-only access." aria-description="Allow this token to start and cancel project builds. Uncheck for read-only access." checked> Allow starting and cancelling builds</label>
+              <button type="submit" id="token-create" title="Create a workspace-scoped Smith token shown once. It cannot administer members or read chats." aria-description="Create a workspace-scoped Smith token shown once. It cannot administer members or read chats.">Create token</button>
+            </form>
+            <div id="tokens" class="tokens" aria-label="Your tokens"></div>
+          </div>
+          <div id="token-created" class="token-created" hidden>
+            <h3>Your new token</h3>
+            <p class="muted small">Copy it now. Smith only keeps a fingerprint, so it cannot show it again.</p>
+            <input id="token-value" title="Copy now; only a fingerprint is stored. A lost token must be replaced." aria-description="Copy now; only a fingerprint is stored. A lost token must be replaced." readonly autocomplete="off" spellcheck="false" aria-label="New token">
+            <p><strong>Claude Code (recommended): install the Smith plugin.</strong> In Claude Code run <code>/plugin marketplace add Red-Marmoset/smith</code>, then <code>/plugin install smith@smith</code>, and paste the token when it asks. It is kept in your system's secure credential store.</p>
+            <p><strong>Or connect directly.</strong> Store the token in an environment variable, then add the server. The single quotes matter: Claude Code reads <code>SMITH_TOKEN</code> each time it starts, so the token is not written to its settings.</p>
+            <p class="muted small">Windows (new terminals pick it up):</p><pre id="token-env-windows" class="command"></pre>
+            <p class="muted small">macOS / Linux:</p><pre id="token-env-posix" class="command"></pre>
+            <p class="muted small">Claude Code (PowerShell, bash or zsh; not cmd.exe):</p><pre id="token-claude" class="command"></pre>
+            <p class="muted small">Codex: add to <code>~/.codex/config.toml</code>:</p><pre id="token-codex" class="command"></pre>
+            <button id="token-done" class="quiet">I have copied it</button>
+          </div>
+        </section>
+        <section class="builds" aria-labelledby="builds-title"><div class="section-heading"><h2 id="builds-title">Builds</h2><span class="muted small">Select a build to follow its output</span></div><div class="table-scroll"><table><thead><tr><th scope="col">Build</th><th scope="col">Status</th><th scope="col">Machine</th><th scope="col">Started</th></tr></thead><tbody id="jobs"></tbody></table></div><p id="no-jobs" class="empty" hidden>No builds yet. Choose a project action above to queue one.</p></section>
+        <section id="job-detail" class="job-detail" hidden aria-labelledby="job-title"><div class="section-heading"><div><h2 id="job-title">Build output</h2><p id="job-meta" class="muted small"></p></div><span class="section-actions"><button id="copy-build-output" class="quiet" type="button" title="Copy all output shown below, including lines outside the scroll area." aria-label="Copy build output" disabled>Copy</button><button id="cancel" title="Cancel this selected build. Running scripts stop when the agent observes cancellation; prior side effects remain." aria-description="Cancel this selected build. Running scripts stop when the agent observes cancellation; prior side effects remain." class="quiet danger">Cancel build</button></span></div><p id="job-result" hidden></p><div id="job-waiting" class="job-waiting" hidden></div><div id="job-artifacts"></div><pre id="logs" class="logs" tabindex="0" aria-label="Build output"></pre><p id="copy-build-status" class="muted small" role="status"></p><p id="log-status" class="muted small" role="status"></p></section>
+      </div>
+    </section>
+    <section id="settings" class="settings" hidden aria-labelledby="settings-title">
+      <details class="inline-help"><summary>Account and workspace settings — help</summary><p>Account preferences follow you; workspace settings affect everyone in the selected workspace. Only owners/admins can save workspace settings. E-mail notifications are planned. A Cloudflare token is delivered to build scripts and does not itself run a deployment. <a href="/help.html#user-guide-hosted-settings">Every setting explained</a></p></details>
+      <div class="section-heading"><div><h1 id="settings-title">Settings</h1><p class="muted small">Account settings follow you to every workspace. Workspace settings apply to everyone who builds in it.</p></div><a class="quiet button-link" href="#" id="close-settings">Back to dashboard</a></div>
+      <div class="settings-grid">
+        <form id="account-form" class="card" aria-labelledby="account-title">
+          <h2 id="account-title">Your account</h2>
+          <div class="field"><label for="display-name">Display name</label><input id="display-name" title="How Smith identifies you across workspaces." aria-description="How Smith identifies you across workspaces." maxlength="64" autocomplete="name" placeholder="How you appear in Smith"></div>
+          <div class="field"><label for="email">E-mail</label><input id="email" title="Saved for future notifications. Does not change sign-in identity or send notifications today." aria-description="Saved for future notifications. Does not change sign-in identity or send notifications today." type="email" maxlength="254" autocomplete="email" placeholder="you@example.com"><p class="muted small">Used for build notifications once they ship. Never shown to other workspaces.</p></div>
+          <h3>Display</h3>
+          <div class="field"><label for="time-zone">Time zone</label><select id="time-zone" title="Display build times and log timestamps in this zone. Browser uses this device’s zone." aria-description="Display build times and log timestamps in this zone. Browser uses this device’s zone."></select><p class="muted small">Applies to build times and log timestamps. “Browser” follows this device.</p></div>
+          <div class="field-row">
+            <div class="field"><label for="clock">Clock</label><select id="clock" title="Choose a 12-hour or 24-hour display; browser default follows device preferences." aria-description="Choose a 12-hour or 24-hour display; browser default follows device preferences."><option value="auto">Browser default</option><option value="12">12-hour</option><option value="24">24-hour</option></select></div>
+            <div class="field"><label for="log-timestamps">Log timestamps</label><select id="log-timestamps" title="Format build output times. Elapsed starts at the first output loaded in this view." aria-description="Format build output times. Elapsed starts at the first output loaded in this view."><option value="off">Off</option><option value="time">Time of day</option><option value="datetime">Date and time</option><option value="iso">ISO 8601 (UTC)</option><option value="elapsed">Elapsed since first output</option></select></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="refresh-seconds">Refresh every (seconds)</label><input id="refresh-seconds" title="Dashboard polling interval from 2 to 60 seconds. This does not change agent heartbeat or lease timing." aria-description="Dashboard polling interval from 2 to 60 seconds. This does not change agent heartbeat or lease timing." type="number" min="2" max="60" step="1"></div>
+            <div class="field check"><label><input id="follow-output" title="Scroll to the bottom as new build output arrives. Turn off to inspect earlier output." aria-description="Scroll to the bottom as new build output arrives. Turn off to inspect earlier output." type="checkbox"> Follow live build output</label></div>
+          </div>
+          <div class="actions"><button type="submit">Save account</button><span id="account-status" class="muted small" role="status"></span></div>
+        </form>
+        <form id="workspace-form" class="card" aria-labelledby="workspace-title">
+          <h2 id="workspace-title">Workspace</h2>
+          <p id="workspace-readonly" class="muted small" hidden>Only workspace owners and admins can change these settings.</p>
+          <div class="field"><label for="workspace-name">Workspace name</label><input id="workspace-name" title="Display name for this workspace; its stable ID stays the same." aria-description="Display name for this workspace; its stable ID stays the same." maxlength="64" required></div>
+          <div class="field-row">
+            <div class="field"><label for="node-offline-seconds">Machine offline after (seconds)</label><input id="node-offline-seconds" title="Mark machines offline after 15–3600 seconds without contact. Leases still last 90 seconds." aria-description="Mark machines offline after 15–3600 seconds without contact. Leases still last 90 seconds." type="number" min="15" max="3600" step="1"></div>
+            <div class="field check"><label><input id="supersede-queued" title="Replace matching waiting builds when a new build is queued. Does not cancel running work." aria-description="Replace matching waiting builds when a new build is queued. Does not cancel running work." type="checkbox"> New build replaces a queued build of the same product</label></div>
+          </div>
+          <div id="studio-access-section" hidden>
+            <h3>Studio access</h3>
+            <div class="field"><label for="studio-access">Studio Google accounts</label><select id="studio-access"><option value="off">Not shared</option><option value="viewer">Join as viewers (see builds)</option><option value="operator">Join as operators (start builds)</option><option value="admin">Join as admins (settings and people)</option></select><p id="studio-access-help" class="muted small"></p></div>
+          </div>
+          <h3>Copies <span id="copies-status" class="muted small"></span></h3>
+          <p class="muted small">Build machines switched on to keep copies hold this workspace's repositories and large files within a budget each; Smith spreads the copies so every item is on this many machines.</p>
+          <div class="field-row">
+            <div class="field"><label for="copy-budget-gb">Default budget per machine (GB)</label><input id="copy-budget-gb" type="number" min="1" max="10240" step="1" title="How much a machine keeps unless its card says otherwise." aria-description="How much a machine keeps unless its card says otherwise."></div>
+            <div class="field"><label for="copies-per-item">Copies of each item</label><input id="copies-per-item" type="number" min="1" max="5" step="1" title="How many machines should hold each repository and each large file." aria-description="How many machines should hold each repository and each large file."></div>
+            <div class="field"><label for="lfs-reserve-gb">Keep at least this much free on machines (GB)</label><input id="lfs-reserve-gb" type="number" min="1" max="1024" step="1" title="A machine is handed a copy only while this much disk stays free." aria-description="A machine is handed a copy only while this much disk stays free."></div>
+          </div>
+          <h3>Large files (Git LFS) <span id="lfs-status" class="muted small"></span></h3>
+          <p id="lfs-mode" class="muted small"></p>
+          <p id="lfs-direct-help" class="muted small" hidden>To lift the per-file cap, give the coordinator an R2 API token (Object Read &amp; Write on the git bucket) as two Worker secrets: <code>npx wrangler secret put R2_ACCESS_KEY_ID</code> and <code>npx wrangler secret put R2_SECRET_ACCESS_KEY</code>.</p>
+          <div class="field-row">
+            <div class="field"><label for="lfs-quota-gb">Large files quota (GB)</label><input id="lfs-quota-gb" type="number" min="0" max="1024" step="1" title="How much Smith keeps for this workspace in R2. A push past it is refused with the numbers." aria-description="How much Smith keeps for this workspace in R2. A push past it is refused with the numbers."></div>
+            <div class="field"><label for="lfs-import-threshold-mb">Move files over this to large files on import (MB)</label><input id="lfs-import-threshold-mb" type="number" min="1" max="32" step="1" title="Import from GitHub rewrites history so files over this size live in large files. At most 32 MB, the largest file Smith's storage takes." aria-description="Import from GitHub rewrites history so files over this size live in large files. At most 32 MB, the largest file Smith's storage takes."></div>
+          </div>
+          <p class="muted small"><button type="button" id="lfs-check" class="quiet">Check large files</button> <span id="lfs-check-status"></span></p>
+          <h3>Cloudflare <span id="cloudflare-status" class="muted small"></span></h3>
+          <p class="muted small">Lets build scripts on your machines publish to Cloudflare (Wrangler, Pages, DNS). The token is stored write-only and reaches jobs only as <code>CLOUDFLARE_API_TOKEN</code> when a machine claims a build. Every build in this workspace can read it. If this account has Cloudflare Artifacts, adding <b>Artifacts Edit</b> to the token lets Smith keep its project copies here.</p>
+          <div class="field"><label for="cloudflare-account-id">Account ID</label><input id="cloudflare-account-id" title="Workspace build environment CLOUDFLARE_ACCOUNT_ID. Saving it does not deploy anything." aria-description="Workspace build environment CLOUDFLARE_ACCOUNT_ID. Saving it does not deploy anything." maxlength="32" autocomplete="off" spellcheck="false" placeholder="32 hex characters, from the Cloudflare dashboard"></div>
+          <div class="field"><label for="cloudflare-token">API token</label><input id="cloudflare-token" title="Write-only Cloudflare credential delivered to workspace builds. Blank keeps the current value; every build can read it." aria-description="Write-only Cloudflare credential delivered to workspace builds. Blank keeps the current value; every build can read it." type="password" maxlength="256" autocomplete="new-password" spellcheck="false"><p class="muted small">Create a scoped token (for example Workers Scripts:Edit or Pages:Edit). Leave blank to keep the current token.</p></div>
+          <div class="field check"><label><input id="clear-cloudflare-token" title="Remove the stored token for future claims. Cannot recall a token already sent to a running build." aria-description="Remove the stored token for future claims. Cannot recall a token already sent to a running build." type="checkbox"> Remove the stored token</label></div>
+          <h3>GitHub <span id="github-status" class="muted small"></span></h3>
+          <p class="muted small">Optional. Smith normally reads <code>smith.json</code> through the GitHub account you linked at the top of the page, and lists your repositories from it. Only if nobody in this workspace can link GitHub, store a fine-grained token here with read-only <em>Contents</em> and <em>Metadata</em> access. It is stored write-only and never given to builds or coding agents.</p>
+          <div class="field"><label for="github-token">Access token</label><input id="github-token" type="password" maxlength="256" autocomplete="new-password" spellcheck="false"><p class="muted small">Leave blank to keep the current token.</p></div>
+          <div class="field check"><label><input id="clear-github-token" type="checkbox"> Remove the stored GitHub token</label></div>
+          <h3>Crew <span id="anthropic-status" class="muted small"></span></h3>
+          <p class="muted small">A crew member runs with a machine’s Claude Code or Codex sign-in, the workspace’s Anthropic API key, or a model running on the machine. Owners choose which machines run crew, on their machine card.</p>
+          <fieldset class="field ai-order" aria-describedby="ai-order-help"><legend>AI order</legend>
+            <div class="field-row">
+              <div class="field"><label for="ai-order-1">First</label><select id="ai-order-1"></select></div>
+              <div class="field"><label for="ai-order-2">Then</label><select id="ai-order-2"></select></div>
+              <div class="field"><label for="ai-order-3">Then</label><select id="ai-order-3"></select></div>
+            </div>
+            <p id="ai-order-help" class="muted small">A crew member set to “Best available” uses the first of these that is ready on the machine running it: Claude (its Claude Code sign-in, or the API key below on a build machine), GPT (its Codex sign-in), or a model running on the machine. Leave one out to never use it.</p>
+          </fieldset>
+          <div class="field check crew-setting"><label><input id="crew-may-create" type="checkbox"> Allow crew members to create projects</label><p class="muted small">Only members you allow, and only on this workspace’s own Cloudflare account (the account ID and API token above). Each new project gets its own copy in Smith and counts toward the 20 projects.</p><p id="crew-projects-used" class="muted small"></p></div>
+          <div class="field-row">
+            <div class="field"><label for="crew-concurrent">Concurrent crew runs</label><input id="crew-concurrent" type="number" min="1" max="10" step="1" required></div>
+            <div class="field"><label for="crew-daily-usd">Daily crew API spend limit (USD)</label><input id="crew-daily-usd" type="number" min="0" max="1000" step="1" required aria-describedby="crew-daily-usd-help"><p id="crew-daily-usd-help" class="muted small">API-key spending over the last 24 hours, including queued and running reservations. Set 0 to prevent new paid API runs. Sign-in and local-model usage is controlled by concurrency, each member’s runs per day, and Stop all crew.</p></div>
+          </div>
+          <p id="crew-builds-used" class="muted small" hidden></p>
+          <div class="field"><label for="anthropic-key">Anthropic API key</label><input id="anthropic-key" type="password" maxlength="256" autocomplete="new-password" spellcheck="false" aria-describedby="anthropic-key-help"><p id="anthropic-key-help" class="muted small">Use a dedicated key with a spend cap set in the Anthropic console: every crew member set to use it can, and that cap is the real limit. It is stored write-only and reaches only crew runs on build machines, never builds. Leave blank to keep the current key.</p></div>
+          <div class="field check"><label><input id="clear-anthropic-key" type="checkbox"> Remove the stored key</label></div>
+          <div class="field check crew-setting"><label><input id="crew-stopped" type="checkbox" aria-describedby="crew-stopped-help"> Stop all crew</label><p id="crew-stopped-help" class="muted small">Pauses scheduling, stops running crew runs and ends their access. Members keep their settings and start again once this is off.</p></div>
+          <div class="field check crew-setting"><label><input id="checkin-enabled" type="checkbox"> Schedule opted-in agents from check-ins</label><p class="muted small">Off by default. Each member also needs a check-in policy. Stop all crew still takes priority.</p></div>
+          <fieldset class="crew-setting" aria-describedby="checkin-limits-help"><legend>Check-in activity limits</legend>
+            <div class="field-row">
+              <div class="field"><label for="checkin-cheap-limit">Cheap concurrent runs</label><input id="checkin-cheap-limit" type="number" min="0" max="10000" step="1" required></div>
+              <div class="field"><label for="checkin-medium-limit">Medium concurrent runs</label><input id="checkin-medium-limit" type="number" min="0" max="10000" step="1" required></div>
+              <div class="field"><label for="checkin-expensive-limit">Expensive concurrent runs</label><input id="checkin-expensive-limit" type="number" min="0" max="10000" step="1" required></div>
+              <div class="field"><label for="checkin-starts-limit">Start cap per hour</label><input id="checkin-starts-limit" type="number" min="1" max="10000" step="1" required></div>
+            </div>
+            <p id="checkin-limits-help" class="muted small">Set a cost class to 0 to prevent new check-in runs in that class. The hourly cap counts all crew starts when admitting check-in work. These limits do not stop runs already admitted or rate-limit scheduled members; use their runs-per-day limits or Stop all crew. Save workspace to apply changes.</p>
+          </fieldset>
+          <h3>Project finding automation</h3><p class="muted small">Report only records findings. Suggest allows human-requested fixes and regression tests. Automatic fixes also request fixes for new findings. Save workspace to apply changes.</p><div id="checkin-project-automation"></div><details class="crew-setting"><summary>Advanced check-in policy</summary><label for="checkin-policy">Event budgets and review rules (JSON)</label><textarea id="checkin-policy" rows="10" spellcheck="false" aria-describedby="checkin-policy-help"></textarea><p id="checkin-policy-help" class="muted small">Controls event unit budgets, request depth, total runs and project rules. Scheduling units are separate from dollar limits. The visible project automation controls, activity limits and scheduling switch above take precedence over any matching JSON fields.</p></details>
+          <div class="field"><label for="checkin-webhook-secret">GitHub check-in webhook secret</label><input id="checkin-webhook-secret" type="password" maxlength="256" autocomplete="new-password" spellcheck="false"><p class="muted small">Stored write-only. Leave blank to keep it. Use 32–256 letters, digits, dots, hyphens or underscores. Configure the same secret in GitHub and subscribe to push and pull request events using JSON.</p><p id="checkin-webhook-url" class="muted small crew-event-range"></p><label class="check"><input id="clear-checkin-webhook-secret" type="checkbox"> Remove webhook secret</label></div>
+          <div class="actions"><button type="submit" id="save-workspace" title="Owners/admins save these shared settings. Cloudflare credentials apply when future jobs are claimed." aria-description="Owners/admins save these shared settings. Cloudflare credentials apply when future jobs are claimed.">Save workspace</button><span id="workspace-status" class="muted small" role="status"></span></div>
+        </form>
+        <section id="people" class="card" aria-labelledby="people-title">
+          <h2 id="people-title">People</h2>
+          <p class="muted small">Everyone who can open this workspace. Owners and admins change roles and remove people; anyone can leave.</p>
+          <div id="members" class="tokens"></div>
+          <div id="removed-members-section" hidden><h3>Removed</h3><p class="muted small">They cannot rejoin through Studio access until you let them back in.</p><div id="removed-members" class="tokens"></div></div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <dialog id="enrollment" aria-labelledby="enrollment-title"><div class="section-heading"><h2 id="enrollment-title">Connect a machine</h2><button id="close-enrollment" class="quiet">Close</button></div><p id="enrollment-purpose"></p><p>Download the Smith package for this machine and extract it to its own folder, such as C:\SmithAgent:</p><ul id="enrollment-downloads" class="downloads"><li><a href="/downloads/smith-experiment-windows.zip">Windows</a></li><li>macOS <span class="muted">(coming soon)</span></li><li>Linux <span class="muted">(coming soon)</span></li></ul><p>Then run this in that folder (on Windows, just double-click it):</p><pre id="enrollment-command" class="command"></pre><p>When it asks, paste this connect code and press Enter (it shows as *****):</p><label for="enrollment-code">Connect code</label><div class="inline-actions"><input id="enrollment-code" title="One-use machine code, valid ten minutes. Paste into the agent’s hidden prompt, not command arguments." aria-description="One-use machine code, valid ten minutes. Paste into the agent’s hidden prompt, not command arguments." readonly autocomplete="off" spellcheck="false"><button id="copy-enrollment-code" class="quiet" type="button">Copy</button></div><p id="enrollment-expiry" class="muted small"></p><p class="muted small">That is all: on Windows the agent then runs in the background, starts when you log on and reconnects by itself. This machine appears on the dashboard once it connects.</p></dialog>
+  <dialog id="clone-dialog" aria-labelledby="clone-title"><div class="section-heading"><h2 id="clone-title">Clone from Smith</h2><button type="button" id="close-clone" class="quiet">Close</button></div>
+    <p id="clone-intro" class="muted small"></p>
+    <label for="clone-url">Clone URL</label><div class="inline-actions"><input id="clone-url" readonly autocomplete="off" spellcheck="false"><button id="copy-clone-url" class="quiet" type="button">Copy</button></div>
+    <p class="muted small">Large files (Git LFS) work out of the box: run <code>git lfs install</code> once on your computer.</p>
+    <p id="clone-help-smith" class="muted small">Git asks for a password the first time. Use a git credential: it works for this workspace only and stays valid until you revoke it under <a href="#agents-heading">Tokens for Claude Code, Codex and git</a>, where its last use is shown. A token you already have works too.</p>
+    <form id="clone-credential-form"><div class="form-grid"><div><label for="clone-credential-name">Credential name</label><input id="clone-credential-name" maxlength="64" required autocomplete="off"></div><label class="check" id="clone-push-field"><input type="checkbox" id="clone-push" checked> Allow pushing</label></div><div class="dialog-actions"><button type="submit" id="clone-credential-create" class="quiet">Create a git credential</button></div></form>
+    <div id="clone-created" hidden><p><strong>Your new git credential</strong>, shown once. <span id="clone-created-note">It is the password; the username is already in the URL.</span></p><input id="clone-token" readonly autocomplete="off" spellcheck="false" aria-label="New git credential"><pre id="clone-command" class="command"></pre>
+      <p class="muted small">Windows and macOS keep it in Git Credential Manager or the keychain after the first clone. On Linux, set a credential helper first: <code>git config --global credential.helper libsecret</code> (or Git Credential Manager); <code>credential.helper store</code> also works but writes it to <code>~/.git-credentials</code> in plain text.</p></div>
+  </dialog>
+  <dialog id="edit-project-dialog" aria-labelledby="edit-project-title"><form id="edit-project-form" method="dialog"><div class="section-heading"><h2 id="edit-project-title">Edit project</h2><button type="button" id="close-edit-project" class="quiet">Close</button></div>
+    <p id="edit-project-pinned" class="muted small" hidden>This project is pinned to one commit. Saving makes it follow the newest commit on the branch below: its actions come from that branch’s smith.json, and Build on push becomes available. Its crew members, builds and copy stay.</p>
+    <label for="edit-project-name">Name</label><input id="edit-project-name" maxlength="128" autocomplete="off" required>
+    <label for="edit-project-branch">Branch</label><input id="edit-project-branch" maxlength="256" autocomplete="off" spellcheck="false" list="edit-project-branches" required><datalist id="edit-project-branches"></datalist>
+    <fieldset id="edit-project-source" class="field" hidden><legend>Builds, AI chats and crew work on</legend>
+      <label class="check"><input type="radio" name="edit-project-from" value="copy"> Smith’s copy <span class="muted small">(recommended: chat and crew branches land in Smith, and a push to the linked repository is pulled in, then built)</span></label>
+      <label class="check"><input type="radio" name="edit-project-from" value="repository"> <span id="edit-project-from-repository">The repository</span> <span class="muted small">(clones and pushes go straight to it, with each machine’s own Git login)</span></label>
+    </fieldset>
+    <div class="dialog-actions"><button type="submit" id="submit-edit-project">Save</button></div></form></dialog>
+  <dialog id="add-project-dialog" aria-labelledby="add-project-title"><form id="add-project-form" method="dialog"><div class="section-heading"><h2 id="add-project-title">Add a project</h2><button type="button" id="close-add-project" class="quiet">Close</button></div>
+    <fieldset class="source-choice"><legend>Start from</legend>
+      <label class="check"><input type="radio" name="project-source" value="git" checked> A Git repository</label>
+      <label class="check"><input type="radio" name="project-source" value="empty"> Nothing: a new, empty project</label>
+      <label class="check"><input type="radio" name="project-source" value="zip"> A .zip of the project's files</label></fieldset>
+    <p id="new-source-blocked" class="notice error small" hidden></p>
+    <div id="git-source-fields">
+    <label for="git-repo-pick">Repository</label><select id="git-repo-pick"><option value="">Loading…</option></select>
+    <div class="picker-actions"><button type="button" id="connect-github" class="quiet" hidden>Connect GitHub</button><a id="install-github" class="quiet button-link" target="_blank" rel="noopener" hidden>Add more organisations on GitHub</a></div>
+    <p id="git-repo-hint" class="muted small"></p>
+    <div id="git-url-field" hidden><label for="git-url">Repository URL</label><input id="git-url" maxlength="256" placeholder="git@github.com:org/repo.git or https://…" autocomplete="off" spellcheck="false"></div>
+    </div>
+    <div id="new-source-fields" hidden>
+      <label for="new-project-name">Name</label><input id="new-project-name" maxlength="128" placeholder="My game" autocomplete="off">
+      <div id="zip-field" hidden><label for="new-project-zip">Zip file <span class="muted">(up to 100 MB)</span></label><input id="new-project-zip" type="file" accept=".zip,application/zip"></div>
+    </div>
+    <label for="git-branch">Branch <span class="muted">(optional)</span></label><input id="git-branch" maxlength="256" placeholder="Default branch" autocomplete="off" spellcheck="false" list="git-branches"><datalist id="git-branches"></datalist>
+    <div class="field check" id="artifacts-choice" hidden><label><input id="store-on-artifacts" type="checkbox" checked> Keep a copy in Smith and build from it</label><p id="artifacts-choice-hint" class="muted small"></p></div>
+    <p id="source-explainer" class="muted small">Smith reads the repository's smith.json and offers its build actions, which build the newest commit on the branch.</p>
+    <div class="dialog-actions"><button type="submit" id="submit-add-project">Add project</button></div></form></dialog>
+  <dialog id="import-dialog" class="import-dialog" aria-labelledby="import-title"><div class="section-heading"><h2 id="import-title">Import from GitHub</h2><button type="button" id="close-import" class="quiet">Close</button></div>
+    <div id="import-pick">
+      <p class="muted small">Every ticked repository is copied into Smith’s storage behind this site’s git address, with files over the threshold moved to large files (Git LFS). A rewritten repository is detached from GitHub, because its commits change; its original history is kept.</p>
+      <div class="form-grid"><div><label for="import-org">Organisation</label><select id="import-org"></select></div><div><label for="import-org-typed">or type one</label><input id="import-org-typed" maxlength="39" autocomplete="off"></div>
+        <div><label for="import-threshold-mb">Move files over (MB) to large files</label><input id="import-threshold-mb" type="number" min="1" max="32" step="1"></div>
+        <label class="check"><input type="checkbox" id="import-link" checked> Stay linked to GitHub (Pull and Push keep working; rewritten repositories detach regardless)</label></div>
+      <p class="muted small"><button type="button" id="import-list" class="quiet">List repositories</button> <span id="import-status"></span></p>
+      <div id="import-repos" class="import-rows"></div>
+      <div class="dialog-actions"><button type="button" id="import-start">Import</button></div>
+    </div>
+    <div id="import-panel" hidden><p id="import-summary"></p><div id="import-rows" class="import-rows"></div><div class="dialog-actions"><button type="button" id="import-cancel" class="quiet danger">Cancel import</button></div></div>
+  </dialog>
+  <dialog id="crew-dialog" class="crew-dialog" aria-labelledby="crew-dialog-title"><form id="crew-form" method="dialog"><div class="section-heading"><h2 id="crew-dialog-title">New crew member</h2><button type="button" id="close-crew-dialog" class="quiet">Close</button></div>
+    <div class="form-grid">
+      <div id="crew-template-field"><label for="crew-template">Start from</label><select id="crew-template"></select></div>
+      <div><label for="crew-name">Name</label><input id="crew-name" required maxlength="64" autocomplete="off"></div>
+    </div>
+    <label for="crew-charter">Charter</label>
+    <textarea id="crew-charter" rows="7" maxlength="8000" aria-describedby="crew-charter-help"></textarea>
+    <p id="crew-charter-help" class="muted small">In plain English: what to look at, what counts as done, and what not to touch. <span id="crew-charter-count"></span></p>
+    <fieldset><legend>Projects</legend>
+      <label for="crew-primary">Works on</label><select id="crew-primary" required aria-describedby="crew-primary-hint"></select>
+      <p id="crew-primary-hint" class="muted small"></p>
+      <p id="crew-related-label" class="muted small">Also reads (cloned read-only beside its checkout):</p>
+      <div id="crew-related" class="crew-checks" role="group" aria-labelledby="crew-related-label"></div>
+      <label class="check"><input type="checkbox" id="crew-attach-shared"> Also read every shared project the crew has created</label>
+    </fieldset>
+    <fieldset><legend>How it runs</legend>
+      <div class="form-grid">
+        <div><label for="crew-brain">AI</label><select id="crew-brain" aria-describedby="crew-brain-hint"></select></div>
+        <div id="crew-model-field"><label for="crew-model" id="crew-model-label">Model on machine</label><select id="crew-model"></select></div>
+        <div><label for="crew-machine">Machine</label><select id="crew-machine"></select></div>
+        <div><label for="crew-mode">Permissions</label><select id="crew-mode" aria-describedby="crew-mode-hint"><option value="acceptEdits">Edit its own branch</option><option value="plan">Read and report only</option></select></div>
+      </div>
+      <p id="crew-brain-hint" class="muted small"></p>
+      <p id="crew-mode-hint" class="muted small"></p>
+    </fieldset>
+    <fieldset><legend>When it runs</legend>
+      <div class="form-grid">
+        <div><label for="crew-trigger">Trigger</label><select id="crew-trigger"><option value="manual">Only when someone presses Run now</option><option value="interval">On a schedule</option><option value="buildFinished">After a build finishes</option><option value="branchChanged">When a branch gets new commits</option></select></div>
+        <div id="crew-branch-field"><label for="crew-branch">Branch</label><input id="crew-branch" type="text" maxlength="256" spellcheck="false" autocomplete="off" aria-describedby="crew-branch-hint"></div>
+        <div id="crew-check-field"><label for="crew-check">Look every (minutes)</label><input id="crew-check" type="number" min="2" max="1440" step="1"></div>
+        <div id="crew-interval-field"><label for="crew-interval">Every (minutes, at least 15)</label><input id="crew-interval" type="number" min="15" max="10080" step="1"></div>
+        <div id="crew-on-field"><label for="crew-on">Which builds</label><select id="crew-on"><option value="failed">Failed builds</option><option value="any">Every build</option></select></div>
+      </div>
+      <p id="crew-branch-hint" class="muted small"></p>
+      <label class="check" id="crew-skip-field"><input type="checkbox" id="crew-skip"> Skip a run when the project has no new commits</label>
+    </fieldset>
+    <fieldset><legend>Budget</legend>
+      <div class="form-grid">
+        <div><label for="crew-usd">Dollars per run</label><input id="crew-usd" type="number" min="0.01" max="100" step="0.01" required></div>
+        <div><label for="crew-minutes">Minutes per run</label><input id="crew-minutes" type="number" min="1" max="180" step="1" required></div>
+        <div><label for="crew-runs-per-day">Runs per day</label><input id="crew-runs-per-day" type="number" min="1" max="96" step="1" required></div>
+        <div><label for="crew-builds-per-day">Verify builds per day</label><input id="crew-builds-per-day" type="number" min="0" max="48" step="1" required></div>
+      </div>
+      <p class="muted small">A run stops at its dollar budget or its time limit, whichever comes first.</p>
+    </fieldset>
+    <fieldset><legend>Review and powers</legend>
+      <label for="crew-verify">Verify builds</label><select id="crew-verify" aria-describedby="crew-verify-hint"></select>
+      <p id="crew-verify-hint" class="muted small">The product the Review tab’s Verify button builds from this member’s proposals. A person always presses it.</p>
+      <label class="check"><input type="checkbox" id="crew-may-message"> May message other crew members</label>
+      <label class="check"><input type="checkbox" id="crew-may-create-projects" aria-describedby="crew-may-create-hint"> May create new projects to share a tool</label>
+      <p id="crew-may-create-hint" class="muted small"></p>
+      <label class="check"><input type="checkbox" id="crew-enabled" aria-describedby="crew-enabled-hint"> Enabled: runs on its trigger</label>
+      <p id="crew-enabled-hint" class="muted small"></p>
+    </fieldset>
+    <fieldset><legend>Check-in scheduling</legend>
+      <label for="crew-event-preset">Start with a read-only review policy</label><select id="crew-event-preset"><option value="">Keep current policy</option><option value="standards-reviewer">Standards reviewer · 1 unit</option><option value="cleanup-reviewer">Cleanup reviewer · 1 unit</option><option value="bug-hunter">Bug hunter · 2 units</option><option value="test-reviewer">Test reviewer · 2 units</option><option value="security-reviewer">Security reviewer · 4 units</option><option value="architecture-reviewer">Architecture reviewer · 5 units</option></select>
+      <label for="crew-orchestration">Advanced member policy (JSON; blank turns check-ins off)</label><textarea id="crew-orchestration" rows="10" spellcheck="false" aria-describedby="crew-orchestration-help"></textarea>
+      <p id="crew-orchestration-help" class="muted small">Presets read and report only. Adjust event, branch and path filters, cooldown, debounce, cost class and allowed review requests. Writing requires explicit write permissions and literal directory scopes; no preset enables it.</p>
+    </fieldset>
+    <p id="crew-form-hint" class="crew-form-hint" role="status"></p>
+    <div class="dialog-actions"><button type="submit" id="submit-crew">Create crew member</button></div></form></dialog>
+  <dialog id="crew-prompt-dialog" class="crew-prompt-dialog" aria-labelledby="crew-prompt-title"><div class="section-heading"><h2 id="crew-prompt-title">Prompt preview</h2><button id="close-crew-prompt" class="quiet" type="button">Close</button></div>
+    <p class="muted small">What a run would be told right now, from its charter, projects and memory. Nothing runs.</p>
+    <h3 class="crew-subheading">System prompt</h3><pre id="crew-prompt-system" class="command crew-prompt" tabindex="0"></pre>
+    <h3 class="crew-subheading">First message</h3><pre id="crew-prompt-text" class="command crew-prompt" tabindex="0"></pre></dialog>
+  <footer>Smith experiment <span aria-hidden="true">/</span> System for Managed Integration, Testing &amp; Handoff <span aria-hidden="true">/</span> <a href="/help.html">Help &amp; planned tasks</a></footer>
+</body>
+</html>

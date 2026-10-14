@@ -1,0 +1,12 @@
+{
+    "name": "SmithDiscoveryTest",
+    "version": "0.1.0",
+    "type": "console",
+    "description": "Tests for SmithCore LAN discovery (wire encode/parse + loopback round-trip)",
+    "dependencies": ["SmithCore", "Test"],
+    "exports": {
+        "headers": [],
+        "libraries": []
+    },
+    "platforms": ["Windows", "Linux", "macOS"]
+}

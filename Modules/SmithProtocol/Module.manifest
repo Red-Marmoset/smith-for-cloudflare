@@ -1,0 +1,16 @@
+{
+    "name": "SmithProtocol",
+    "version": "0.1.0",
+    "type": "Engine",
+    "description": "Shared coordinator<->agent wire types and JSON (de)serialization",
+    "dependencies": [],
+    "externalDependencies": ["json"],
+    "sources": {
+        "common": ["WireJson.cpp"]
+    },
+    "exports": {
+        "headers": ["WireTypes.h", "WireJson.h"],
+        "libraries": []
+    },
+    "platforms": ["Windows", "Linux", "macOS"]
+}

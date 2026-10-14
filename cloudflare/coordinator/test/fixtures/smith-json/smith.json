@@ -1,0 +1,159 @@
+{
+    "schemaVersion": 1,
+    "project": {
+        "id": "smith",
+        "name": "Smith",
+        "description": "Smith building and testing itself (dogfooding)"
+    },
+    "repos": [
+        {
+            "name": "main",
+            "primary": true,
+            "url": "git@github.com:Red-Marmoset/smith.git",
+            "defaultBranch": "main",
+            "checkoutDir": "."
+        }
+    ],
+    "buildProducts": [
+        {
+            "name": "self-release",
+            "rules": [
+                {
+                    "name": "build-self-release-candidate",
+                    "enabled": true,
+                    "branches": ["*"],
+                    "nodeSelector": { "labels": ["una-engine"] },
+                    "command": {
+                        "windows": { "interpreter": "ps1", "script": "tools/self-release/build.ps1" }
+                    },
+                    "workingDir": ".",
+                    "timeoutSeconds": 3600,
+                    "successExitCodes": [0],
+                    "artifacts": { "globs": ["Build/SelfRelease/smith-release.zip"], "package": "none" },
+                    "handoff": []
+                }
+            ]
+        },
+        {
+            "name": "build-experiment",
+            "rules": [
+                {
+                    "name": "build-cloudflare-experiment",
+                    "enabled": true,
+                    "branches": ["feature/cloudflare-experiment"],
+                    "nodeSelector": { "labels": ["una-engine"] },
+                    "command": {
+                        "windows": [
+                            { "interpreter": "ps1", "script": "Build.ps1", "args": ["-Project", "Smith", "-Config", "Release"] },
+                            { "interpreter": "python", "script": "tools/package-experiment.py" }
+                        ],
+                        "linux": [
+                            { "interpreter": "sh", "script": "Build.sh", "args": ["Smith"] },
+                            { "interpreter": "python", "script": "tools/package-experiment.py" }
+                        ],
+                        "mac": [
+                            { "interpreter": "sh", "script": "Build.sh", "args": ["Smith"] },
+                            { "interpreter": "python", "script": "tools/package-experiment.py" }
+                        ]
+                    },
+                    "workingDir": ".",
+                    "timeoutSeconds": 1800,
+                    "successExitCodes": [0],
+                    "artifacts": { "globs": ["Build/SmithExperiment/Release/*"], "package": "zip", "archiveName": "smith-experiment.zip" },
+                    "handoff": [ { "name": "collect-experiment", "type": "collect" } ]
+                }
+            ]
+        },
+        {
+            "name": "deploy-experiment",
+            "rules": [
+                {
+                    "name": "deploy-cloudflare-experiment",
+                    "enabled": true,
+                    "serial": true,
+                    "branches": ["feature/cloudflare-experiment"],
+                    "nodeSelector": { "labels": ["una-engine", "smith-deploy"] },
+                    "command": {
+                        "windows": [
+                            { "interpreter": "ps1", "script": "RunTests.ps1" },
+                            { "interpreter": "bat", "script": "DeployWorker.bat", "args": ["--unattended"] }
+                        ]
+                    },
+                    "workingDir": ".",
+                    "timeoutSeconds": 5400,
+                    "successExitCodes": [0],
+                    "artifacts": { "globs": [], "package": "none" },
+                    "handoff": []
+                }
+            ]
+        },
+        {
+            "name": "build",
+            "rules": [
+                {
+                    "name": "build-release",
+                    "enabled": true,
+                    "branches": ["*"],
+                    "nodeSelector": { "labels": ["una-engine"] },
+                    "command": {
+                        "windows": { "interpreter": "ps1", "script": "Build.ps1", "args": ["-Project", "Smith", "-Config", "Release"] },
+                        "linux":   { "interpreter": "sh",  "script": "Build.sh",  "args": ["Smith"] },
+                        "mac":     { "interpreter": "sh",  "script": "Build.sh",  "args": ["Smith"] }
+                    },
+                    "workingDir": ".",
+                    "timeoutSeconds": 1800,
+                    "successExitCodes": [0],
+                    "artifacts": { "globs": ["Build/Smith/Release/Smith*"], "package": "zip", "archiveName": "smith.zip" },
+                    "handoff": [ { "name": "collect-on-coordinator", "type": "collect" } ]
+                }
+            ]
+        },
+        {
+            "name": "test",
+            "rules": [
+                {
+                    "name": "run-tests",
+                    "enabled": true,
+                    "branches": ["*"],
+                    "nodeSelector": { "labels": ["una-engine"] },
+                    "command": {
+                        "windows": { "interpreter": "ps1", "script": "RunTests.ps1" },
+                        "linux":   { "interpreter": "sh",  "script": "RunTests.sh" },
+                        "mac":     { "interpreter": "sh",  "script": "RunTests.sh" }
+                    },
+                    "workingDir": ".",
+                    "timeoutSeconds": 1800,
+                    "successExitCodes": [0],
+                    "artifacts": { "globs": [], "package": "none" },
+                    "handoff": []
+                }
+            ]
+        },
+        {
+            "name": "tray",
+            "rules": [
+                {
+                    "name": "build-tray",
+                    "enabled": true,
+                    "branches": ["*"],
+                    "nodeSelector": { "labels": ["una-engine", "wxwidgets"] },
+                    "command": {
+                        "windows": { "interpreter": "ps1", "script": "Build.ps1", "args": ["-Project", "SmithTray", "-Config", "Release"] },
+                        "mac":     { "interpreter": "sh",  "script": "Build.sh",  "args": ["SmithTray"] }
+                    },
+                    "workingDir": ".",
+                    "timeoutSeconds": 1800,
+                    "successExitCodes": [0],
+                    "artifacts": { "globs": ["Build/SmithTray/Release/SmithTray*"], "package": "zip", "archiveName": "smith-tray.zip" },
+                    "handoff": [ { "name": "collect-on-coordinator", "type": "collect" } ]
+                }
+            ]
+        }
+    ],
+    "triggers": [
+        { "type": "webhook", "branches": ["feature/cloudflare-experiment"], "product": "deploy-experiment" },
+        { "type": "poll", "branches": ["feature/cloudflare-experiment"], "intervalSeconds": 120, "product": "build-experiment" },
+        { "type": "poll", "branches": ["main"], "intervalSeconds": 120, "product": "test" },
+        { "type": "manual" }
+    ]
+}

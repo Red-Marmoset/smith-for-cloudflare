@@ -1,0 +1,22 @@
+{
+  "name": "smith",
+  "description": "Use Smith (System for Managed Integration, Testing & Handoff) from Claude Code: see projects and build machines, start builds, wait for them and read their logs. Smith tools cannot deploy or promote anything.",
+  "version": "0.1.0",
+  "author": { "name": "Red Marmoset Studios" },
+  "userConfig": {
+    "smith_url": {
+      "type": "string",
+      "title": "Smith address",
+      "description": "The Smith dashboard address, without a trailing slash.",
+      "default": "https://exp.redmarmosetstudios.com",
+      "required": true
+    },
+    "smith_token": {
+      "type": "string",
+      "title": "Smith token",
+      "description": "A personal access token from the Smith dashboard (\"Use Smith from Claude Code or Codex\"). It starts with smith_pat_. It is for Smith only, not your Claude login.",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}

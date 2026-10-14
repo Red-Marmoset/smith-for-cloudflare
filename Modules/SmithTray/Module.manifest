@@ -1,0 +1,19 @@
+{
+    "name": "SmithTray",
+    "version": "0.1.0",
+    "type": "Engine",
+    "description": "Optional desktop tray (wxTaskBarIcon) embedding a Smith coordinator + co-located agent. The only Smith module that links wxWidgets.",
+    "dependencies": ["SmithCoordinator", "SmithCore", "SmithProtocol", "Http", "Platform", "System", "Log"],
+    "externalDependencies": ["wxwidgets", "json"],
+    "sources": {
+        "common": ["TrayApp.cpp", "TrayIcon.cpp"],
+        "Windows": ["Main_Windows.cpp"],
+        "Linux": ["Main_Linux.cpp"],
+        "macOS": ["Main_Mac.cpp"]
+    },
+    "exports": {
+        "headers": [],
+        "libraries": []
+    },
+    "platforms": ["Windows", "Linux", "macOS"]
+}

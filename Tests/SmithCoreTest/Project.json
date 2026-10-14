@@ -1,0 +1,7 @@
+{
+    "name": "SmithCoreTest",
+    "type": "console",
+    "version": "0.1.0",
+    "modules": ["SmithCoreTest"],
+    "compiler": "msvc"
+}

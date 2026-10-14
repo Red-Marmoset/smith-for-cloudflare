@@ -1,0 +1,221 @@
+{
+    "schemaVersion": 1,
+    "project": {
+        "id": "soccer-boy",
+        "name": "Soccer Boy",
+        "description": "Unity 2D platformer (Steam)"
+    },
+    "repos": [
+        {
+            "name": "main",
+            "primary": true,
+            "url": "git@github.com:Red-Marmoset/soccer-boy.git",
+            "defaultBranch": "main",
+            "checkoutDir": "."
+        }
+    ],
+    "buildProducts": [
+        {
+            "name": "unity",
+            "discover": {
+                "type": "files",
+                "glob": "Assets/Settings/Build Profiles/*.asset",
+                "as": "PROFILE",
+                "classify": [
+                    { "match": "\\(iOS\\)",     "os": "mac", "labels": ["unity-ios"] },
+                    { "match": "\\(Android\\)", "os": "any", "labels": ["unity-android"] },
+                    { "match": "\\(Mac\\)",     "os": "mac" },
+                    { "match": "\\(Linux\\)",   "os": "any", "labels": ["unity-linux-il2cpp"] },
+                    { "match": ".*",            "os": "windows" }
+                ]
+            },
+            "outputPath": "builds/${PROFILE_SLUG}",
+            "rules": [
+                {
+                    "name": "build-profile",
+                    "enabled": true,
+                    "branches": ["*"],
+                    "nodeSelector": { "labels": ["unity6"] },
+                    "command": {
+                        "windows": {
+                            "interpreter": "ps1",
+                            "script": "tools/smith-build.ps1",
+                            "args": ["-Profile", "${PROFILE}", "-Method", "Autobuild.BuildGameAndDlc"]
+                        },
+                        "mac": {
+                            "interpreter": "sh",
+                            "script": "tools/smith-build.sh",
+                            "args": ["--profile", "${PROFILE}", "--method", "Autobuild.BuildGameAndDlc"]
+                        },
+                        "linux": {
+                            "interpreter": "sh",
+                            "script": "tools/smith-build.sh",
+                            "args": ["--profile", "${PROFILE}", "--method", "Autobuild.BuildGameAndDlc"]
+                        }
+                    },
+                    "workingDir": ".",
+                    "env": { "SMITH_BUILD": "1" },
+                    "timeoutSeconds": 3600,
+                    "successExitCodes": [0],
+                    "artifacts": {
+                        "globs": ["${OUTPUT}/**"],
+                        "package": "zip",
+                        "archiveName": "${PROFILE_SLUG}.zip"
+                    },
+                    "handoff": [
+                        { "name": "collect-on-coordinator", "type": "collect" }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "steam-deploy",
+            "rules": [
+                {
+                    "name": "publish-steam",
+                    "branches": ["*"],
+                    "nodeSelector": { "os": "windows", "labels": ["steamcmd"] },
+                    "inputs": [
+                        { "product": "unity", "variant": "Steam (Windows)" },
+                        { "product": "unity", "variant": "Steam (Mac)" },
+                        { "product": "unity", "variant": "Steam (Linux)" }
+                    ],
+                    "command": {
+                        "windows": { "interpreter": "ps1", "script": "tools/steam-stage.ps1" }
+                    },
+                    "handoff": [
+                        {
+                            "name": "steam-upload",
+                            "type": "steam",
+                            "credentialRef": "steam-soccer-boy",
+                            "appBuildVdfs": ["SteamPipe/app_build.vdf", "SteamPipe/app_build_world2.vdf", "SteamPipe/app_build_world3.vdf"],
+                            "continueOnError": false
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "testflight-internal-deploy",
+            "rules": [
+                {
+                    "name": "publish-testflight-internal",
+                    "branches": ["*"],
+                    "nodeSelector": { "os": "mac", "labels": ["unity-ios"] },
+                    "inputs": [
+                        { "product": "unity", "variant": "App Store (iOS)" }
+                    ],
+                    "command": {
+                        "mac": {
+                            "interpreter": "sh",
+                            "script": "tools/testflight-upload.sh",
+                            "args": ["--slug", "app-store-ios", "--mode", "internal"]
+                        }
+                    },
+                    "workingDir": ".",
+                    "timeoutSeconds": 5400,
+                    "successExitCodes": [0]
+                }
+            ]
+        },
+        {
+            "name": "testflight-external-deploy",
+            "rules": [
+                {
+                    "name": "publish-testflight-external",
+                    "branches": ["*"],
+                    "nodeSelector": { "os": "mac", "labels": ["unity-ios"] },
+                    "inputs": [
+                        { "product": "unity", "variant": "App Store (iOS)" }
+                    ],
+                    "command": {
+                        "mac": {
+                            "interpreter": "sh",
+                            "script": "tools/testflight-upload.sh",
+                            "args": ["--slug", "app-store-ios", "--mode", "external"]
+                        }
+                    },
+                    "workingDir": ".",
+                    "timeoutSeconds": 5400,
+                    "successExitCodes": [0]
+                }
+            ]
+        },
+        {
+            "name": "appstore-deploy",
+            "rules": [
+                {
+                    "name": "publish-appstore",
+                    "branches": ["*"],
+                    "nodeSelector": { "os": "mac", "labels": ["unity-ios"] },
+                    "inputs": [
+                        { "product": "unity", "variant": "App Store (iOS)" }
+                    ],
+                    "command": {
+                        "mac": {
+                            "interpreter": "sh",
+                            "script": "tools/testflight-upload.sh",
+                            "args": ["--slug", "app-store-ios", "--mode", "appstore"]
+                        }
+                    },
+                    "workingDir": ".",
+                    "timeoutSeconds": 5400,
+                    "successExitCodes": [0]
+                }
+            ]
+        }
+    ],
+    "triggers": [
+        { "type": "manual" }
+    ],
+    "chains": [
+        {
+            "name": "steam-release",
+            "builds": [
+                { "product": "unity", "variants": ["steam-windows", "steam-mac", "steam-linux"] }
+            ],
+            "then": [
+                { "product": "steam-deploy" }
+            ]
+        },
+        {
+            "name": "apple-release",
+            "builds": [
+                { "product": "unity", "variants": ["app-store-mac", "app-store-ios"] }
+            ]
+        },
+        {
+            "name": "testflight-internal-release",
+            "builds": [
+                { "product": "unity", "variants": ["app-store-ios"] }
+            ],
+            "then": [
+                { "product": "testflight-internal-deploy" }
+            ]
+        },
+        {
+            "name": "testflight-external-release",
+            "builds": [
+                { "product": "unity", "variants": ["app-store-ios"] }
+            ],
+            "then": [
+                { "product": "testflight-external-deploy" }
+            ]
+        },
+        {
+            "name": "appstore-release",
+            "builds": [
+                { "product": "unity", "variants": ["app-store-ios"] }
+            ],
+            "then": [
+                { "product": "appstore-deploy" }
+            ]
+        },
+        {
+            "name": "google-play-release",
+            "builds": [
+                { "product": "unity", "variants": ["google-play-android"] }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "smith-experiment",
+  "branch": "feature/cloudflare-experiment",
+  "coordinatorUrl": "https://exp.redmarmosetstudios.com",
+  "coordinatorHosting": "cloudflare-workers",
+  "coordinatorStatus": "hosted-builds",
+  "deploymentId": "0a6f670e-9a0e-46c0-bd5b-9bb727096243",
+  "nativeAgentsReady": true,
+  "hostedAgentPlatforms": ["windows", "mac", "linux"]
+}

@@ -1,0 +1,84 @@
+{
+  "name": "SmithAgent",
+  "version": "0.1.0",
+  "type": "Engine",
+  "description": "Smith build agent: register, poll, checkout, run build script with live logs, collect artifacts, report",
+  "dependencies": [
+    "SmithCore",
+    "SmithProtocol",
+    "Http",
+    "Log"
+  ],
+  "externalDependencies": [
+    "zip",
+    "json"
+  ],
+  "sources": {
+    "common": [
+      "Agent.cpp",
+      "ToolMaintenance.cpp",
+      "AgentServices.cpp",
+      "AgentHandoff.cpp",
+      "HostedPolicy.cpp",
+      "HostedRepoCache.cpp",
+      "HostedPull.cpp",
+      "HostedAgent.cpp",
+      "HostedAiSession.cpp",
+      "HostedApproval.cpp",
+      "HostedCodexServer.cpp",
+      "HostedCrewRun.cpp",
+      "HostedCheckIn.cpp",
+      "HostedCrewTurn.cpp",
+      "HostedGitHost.cpp",
+      "HostedGitInit.cpp",
+      "HostedGitRelay.cpp",
+      "HostedGitTasks.cpp",
+      "HostedImport.cpp",
+      "HostedLfsTasks.cpp",
+      "HostedToolSetup.cpp",
+      "HostedTransport.cpp",
+      "HostedUpdate.cpp"
+    ],
+    "Windows": [
+      "HostedPlatform_Windows.cpp"
+    ],
+    "Linux": [
+      "HostedPlatform_Posix.cpp",
+      "HostedSelf_Linux.cpp"
+    ],
+    "macOS": [
+      "HostedPlatform_Posix.cpp",
+      "HostedSelf_Mac.cpp"
+    ]
+  },
+  "exports": {
+    "headers": [
+      "Agent.h",
+      "ToolMaintenance.h",
+      "HostedAgent.h",
+      "HostedPull.h",
+      "HostedPlatform.h",
+      "HostedRepoCache.h",
+      "HostedAiSession.h",
+      "HostedApproval.h",
+      "HostedCodexServer.h",
+      "HostedCrewRun.h",
+      "HostedCheckIn.h",
+      "HostedCrewTurn.h",
+      "HostedGitHost.h",
+      "HostedGitInit.h",
+      "HostedGitRelay.h",
+      "HostedGitTasks.h",
+      "HostedImport.h",
+      "HostedToolSetup.h",
+      "HostedTransport.h",
+      "HostedUpdate.h"
+    ],
+    "libraries": []
+  },
+  "platforms": [
+    "Windows",
+    "Linux",
+    "macOS"
+  ]
+}

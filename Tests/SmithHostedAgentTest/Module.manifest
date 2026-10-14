@@ -1,0 +1,1 @@
+{"name":"SmithHostedAgentTest","version":"0.1.0","type":"console","dependencies":["SmithAgent","Test"],"exports":{"headers":[],"libraries":[]},"platforms":["Windows","Linux","macOS"],"externalDependencies":["zip"]}

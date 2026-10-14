@@ -1,0 +1,13 @@
+{
+    "name": "SmithCoordinatorTest",
+    "version": "0.1.0",
+    "type": "console",
+    "description": "Integration tests for the Smith coordinator HTTP API",
+    "dependencies": ["SmithCoordinator", "SmithCore", "SmithProtocol", "Http", "Test"],
+    "externalDependencies": ["json"],
+    "exports": {
+        "headers": [],
+        "libraries": []
+    },
+    "platforms": ["Windows", "Linux", "macOS"]
+}

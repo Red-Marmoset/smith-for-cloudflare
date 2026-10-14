@@ -1,0 +1,40 @@
+{
+  "verifiedAt": "2026-10-04T14:02:09.3848610Z",
+  "origin": "https://exp.redmarmosetstudios.com",
+  "sourceCommit": "65f88d568834baeb2d491f312f93894842d2db7b",
+  "branch": "feature/cloudflare-experiment",
+  "trigger": "Signed-in hosted dashboard Run self-release button",
+  "job": {
+    "id": "c5104e82-a187-4e53-8aa5-d2fbbf0be814",
+    "projectId": "smith",
+    "product": "self-release",
+    "state": "success",
+    "nodeId": "e78bb006-79dc-46de-90df-27b6064b339f",
+    "attemptId": "1190349c-f8af-4301-89f8-696809dd76d1",
+    "result": {
+      "status": "success",
+      "exitCode": 0,
+      "durationMs": 376401,
+      "message": "Build completed"
+    },
+    "createdAt": 1791122067184,
+    "updatedAt": 1791122445233,
+    "revision": 22
+  },
+  "packageSha256": "2c052d1dd3599f40530eff30360271a9b009249ef412e91a8fa38a86f8961971",
+  "packageBytes": 1329706,
+  "packageCollection": "Bootstrap: collected from successful job workspace; old live agent has no artifact upload support",
+  "promotionPlanVerified": true,
+  "candidatePayloadFiles": 13,
+  "nativeTestProjects": 7,
+  "nativeAssertions": 749,
+  "workerTests": 30,
+  "releaseToolTests": 30,
+  "nativeTlsRuntimeScenarios": 12,
+  "promotionToolCommit": "958b7b2",
+  "activated": false,
+  "liveWorkerDeployment": "0a6f670e-9a0e-46c0-bd5b-9bb727096243",
+  "liveAgentPid": 43268,
+  "independentLanCoordinatorPid": 16616,
+  "remaining": "Explicit promotion approval; then live update and authenticated artifact-delivery verification"
+}

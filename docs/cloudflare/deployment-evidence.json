@@ -1,0 +1,23 @@
+{
+  "verifiedAt": "2026-10-04T11:20:08.265Z",
+  "origin": "https://exp.redmarmosetstudios.com",
+  "sourceRevision": "a2fa2ef1bacd2e596a9d7fca0f7b572cc8f07772",
+  "deploymentBefore": "ab1edbef-bf56-4690-97e1-dfe6fb0d7e59",
+  "deploymentAfter": "ee382e09-3e9f-466a-8b5c-1c57a6a1098a",
+  "workspaceId": "3ac396efa28204a7ce5dabb2585ee89c9cc8924876a60af3f1f39164d7fb7418",
+  "jobId": "40113dec-a250-4e88-8668-445234820136",
+  "finalState": "success",
+  "checks": [
+    "unauthenticated rejection",
+    "one-use enrollment",
+    "enqueue deduplication",
+    "concurrent claim",
+    "lost-response replay",
+    "lease renewal",
+    "idempotent completion",
+    "conflicting-result rejection",
+    "node revocation",
+    "state survives cloud redeployment"
+  ],
+  "execution": "HTTPS fixture client; coordinator and authoritative job state execute on Cloudflare. No native build was executed."
+}

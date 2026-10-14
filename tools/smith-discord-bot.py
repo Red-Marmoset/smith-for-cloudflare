@@ -1,0 +1,1038 @@
+#!/usr/bin/env python3
+# smith-discord-bot.py - Smith's Discord bot.
+#
+# A separate process (Discord needs TLS, which Smith's C++ core avoids) that the
+# coordinator places on the agent with the most free GPU memory. It:
+#   * drives Smith over its plain-HTTP LAN API (build / deploy / add-project / status /
+#     logs / diagnostics / cancel),
+#   * understands natural language via a LOCAL Ollama model (tool-calling), and
+#   * posts build notifications by subscribing to the coordinator's /api/events SSE feed.
+#
+# All config comes from environment variables (the agent injects them). The Smith API
+# client + Ollama client + auth + intent mapping are plain, discord-free helpers so they
+# can be unit-tested without discord.py / a token (see tools/test_discord_bot.py).
+#
+# Copyright (c) 2026 Red Marmoset Studios Ltd.
+import os, re, sys, json, time, asyncio, threading, urllib.parse
+
+import requests  # the only hard third-party dep besides discord.py
+
+# discord.py is optional at import time so the testable helpers below work without it.
+try:
+    import discord
+    from discord import app_commands
+except Exception:
+    discord = None
+    app_commands = None
+
+
+# ----------------------------- config -----------------------------
+def env(k, d=""):
+    return os.environ.get(k, d)
+
+def env_list(k):
+    return [x.strip() for x in env(k).split(",") if x.strip()]
+
+def env_bool(k, d=False):
+    v = env(k)
+    return d if v == "" else v not in ("0", "false", "False", "no")
+
+class Config:
+    def __init__(self):
+        self.token = env("SMITH_DISCORD_TOKEN")
+        self.guild_id = env("SMITH_DISCORD_GUILD_ID")
+        self.notify_channel = env("SMITH_DISCORD_NOTIFY_CHANNEL")
+        self.command_channels = env_list("SMITH_DISCORD_COMMAND_CHANNELS")
+        self.allow_roles = set(env_list("SMITH_DISCORD_ALLOW_ROLES"))
+        self.allow_users = set(env_list("SMITH_DISCORD_ALLOW_USERS"))
+        self.coordinator = env("SMITH_COORDINATOR_URL", "http://127.0.0.1:9876").rstrip("/")
+        # Where humans browse builds (the TLS proxy hostname, e.g.
+        # https://smith.example.com); build links fall back to the LAN coordinator URL.
+        self.public_url = env("SMITH_PUBLIC_URL").rstrip("/") or self.coordinator
+        self.api_token = env("SMITH_API_TOKEN")
+        self.ollama_url = env("SMITH_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+        self.ollama_model = env("SMITH_OLLAMA_MODEL", "qwen3.5:9b")
+        # Small context + long keep_alive: model defaults can claim a 256K context,
+        # ballooning the KV cache out of VRAM (CPU-slow tokens), and the default
+        # 5-minute unload forces a multi-minute cold reload per question.
+        self.ollama_num_ctx = int(env("SMITH_OLLAMA_NUM_CTX", "8192"))
+        self.ollama_keep_alive = env("SMITH_OLLAMA_KEEP_ALIVE", "30m")
+        # After the bot answers in a channel it keeps listening (no @ needed) for
+        # this many seconds, so conversations flow naturally.
+        self.attention_sec = int(env("SMITH_DISCORD_ATTENTION_SEC", "300"))
+        self.notify_start = env_bool("SMITH_NOTIFY_START", True)
+        self.notify_running = env_bool("SMITH_NOTIFY_RUNNING", False)
+        self.notify_success = env_bool("SMITH_NOTIFY_SUCCESS", True)
+        self.notify_fail = env_bool("SMITH_NOTIFY_FAIL", True)
+        self.confirm_deploy = env_bool("SMITH_CONFIRM_DEPLOY", True)
+        self.dry_run = env("SMITH_DISCORD_DRYRUN") == "1"
+
+
+# ----------------------------- Smith API client -----------------------------
+class SmithClient:
+    """Thin wrapper over the coordinator's JSON API (plain HTTP on the LAN)."""
+    def __init__(self, base, token="", session=None):
+        self.base = base.rstrip("/")
+        self.token = token
+        self.http = session or requests.Session()
+
+    def _headers(self):
+        h = {"content-type": "application/json"}
+        if self.token:
+            h["Authorization"] = "Bearer " + self.token
+        return h
+
+    def get(self, path):
+        r = self.http.get(self.base + path, headers=self._headers(), timeout=30)
+        r.raise_for_status()
+        return r.json() if r.content else None
+
+    def post(self, path, body=None):
+        r = self.http.post(self.base + path, headers=self._headers(),
+                           data=json.dumps(body or {}), timeout=60)
+        r.raise_for_status()
+        return r.json() if r.content else None
+
+    def _post_lenient(self, path, body, timeout=60):
+        # Non-raising: a 4xx/503 carries a useful {"error": ...} we want to show.
+        r = self.http.post(self.base + path, headers=self._headers(),
+                           data=json.dumps(body), timeout=timeout)
+        try:
+            return r.json()
+        except Exception:
+            return {"error": "HTTP %d" % r.status_code}
+
+    def get_text(self, path):
+        r = self.http.get(self.base + path, headers=self._headers(), timeout=30)
+        r.raise_for_status()
+        return r.text
+
+    # High-level operations the bot exposes.
+    def projects(self):
+        return self.get("/api/projects") or []
+
+    def nodes(self):
+        return self.get("/api/nodes") or []
+
+    def config_status(self):
+        return self.get("/api/config/status") or {}
+
+    def pipeline(self, project_id):
+        return self.get("/api/projects/" + urllib.parse.quote(project_id) + "/pipeline") or {}
+
+    def autobuilds(self, project_id):
+        return self.get("/api/projects/" + urllib.parse.quote(project_id) + "/autobuilds") or []
+
+    def create_batch(self, project_id, chain="", builds=None, then=None, branch="", clean=False):
+        body = {"projectId": project_id, "branch": branch, "clean": clean}
+        if chain:
+            body["chain"] = chain
+        else:
+            body["builds"] = builds or []
+            body["then"] = then or []
+        return self._post_lenient("/api/batch", body)
+
+    def batches(self, project_id):
+        return self.get("/api/projects/" + urllib.parse.quote(project_id) + "/batches") or []
+
+    def batch(self, batch_id):
+        return self.get("/api/batch/" + urllib.parse.quote(batch_id)) or {}
+
+    def steam_guard(self, code, credential_ref=""):
+        return self._post_lenient("/api/steam-guard",
+                                  {"code": code, "credentialRef": credential_ref}, timeout=30)
+
+    def steam_guard_status(self, request_id):
+        return self.get("/api/steam-guard/" + urllib.parse.quote(request_id)) or {}
+
+    def trigger(self, project_id, product="", branch="", profile="", reason="discord", clean=False):
+        body = {"projectId": project_id, "product": product, "branch": branch,
+                "profile": profile, "reason": reason, "clean": clean}
+        return self.post("/api/trigger", body)
+
+    def add_project(self, url, branch=""):
+        return self.post("/api/projects", {"url": url, "branch": branch})
+
+    def builds(self, project_id):
+        return self.get("/api/projects/" + urllib.parse.quote(project_id) + "/builds") or []
+
+    def build(self, job_id):
+        return self.get("/api/builds/" + urllib.parse.quote(job_id))
+
+    def diagnostics(self, job_id):
+        return self.get("/api/builds/" + urllib.parse.quote(job_id) + "/diagnostics")
+
+    def log_text(self, job_id):
+        return self.get_text("/api/builds/" + urllib.parse.quote(job_id) + "/log")
+
+    def log_tail(self, job_id, max_chars=3500):
+        txt = self.log_text(job_id)
+        return txt[-max_chars:] if len(txt) > max_chars else txt
+
+    def cancel(self, job_id):
+        return self.post("/api/builds/" + urllib.parse.quote(job_id) + "/cancel")
+
+
+# ----------------------------- Ollama (local LLM) -----------------------------
+# Tools the model may call. Mutating ones are gated by a confirmation in the bot.
+TOOLS = [
+    {"type": "function", "function": {"name": "trigger_build", "description": "Start a build of a project",
+        "parameters": {"type": "object", "properties": {
+            "project": {"type": "string"}, "product": {"type": "string"}, "branch": {"type": "string"},
+            "clean": {"type": "boolean", "description": "Force a clean checkout: wipe untracked/ignored build caches first"}},
+            "required": ["project"]}}},
+    {"type": "function", "function": {"name": "deploy", "description": "Deploy/publish a project (mutating; always confirmed)",
+        "parameters": {"type": "object", "properties": {
+            "project": {"type": "string"}, "product": {"type": "string"}, "branch": {"type": "string"}},
+            "required": ["project"]}}},
+    {"type": "function", "function": {"name": "add_project", "description": "Add a new project by git URL",
+        "parameters": {"type": "object", "properties": {
+            "url": {"type": "string"}, "branch": {"type": "string"}}, "required": ["url"]}}},
+    {"type": "function", "function": {"name": "build_status", "description": "Show recent build status for a project",
+        "parameters": {"type": "object", "properties": {"project": {"type": "string"}}, "required": ["project"]}}},
+    {"type": "function", "function": {"name": "explain_failure", "description": "Explain why a build failed. jobId may be a job id OR a build number like 45 or #45; pass project too when known",
+        "parameters": {"type": "object", "properties": {
+            "jobId": {"type": "string"}, "project": {"type": "string"}}, "required": ["jobId"]}}},
+    {"type": "function", "function": {"name": "cancel_build", "description": "Cancel a build (mutating; confirmed). jobId may be a job id OR a build number; pass project too when known",
+        "parameters": {"type": "object", "properties": {
+            "jobId": {"type": "string"}, "project": {"type": "string"}}, "required": ["jobId"]}}},
+    {"type": "function", "function": {"name": "project_pipeline", "description": "How a project's builds are SET UP (its smith.json pipeline): products, rules, branch filters, node requirements, handoff/deploy steps and triggers",
+        "parameters": {"type": "object", "properties": {"project": {"type": "string"}}, "required": ["project"]}}},
+    {"type": "function", "function": {"name": "run_chain", "description": "Run a project's named chain (from its smith.json): several builds in parallel, then the follow-up (e.g. a deploy) only if ALL succeed. Use for 'run steam-release', 'build all platforms and deploy'",
+        "parameters": {"type": "object", "properties": {
+            "project": {"type": "string"}, "chain": {"type": "string"}, "branch": {"type": "string"},
+            "clean": {"type": "boolean", "description": "Force a clean checkout for every build in the chain"}}, "required": ["project", "chain"]}}},
+    {"type": "function", "function": {"name": "run_batch", "description": "Queue several builds of a project at once (profiles by name or slug). deploy=true also queues the project's deploy product, gated on all builds succeeding",
+        "parameters": {"type": "object", "properties": {
+            "project": {"type": "string"}, "profiles": {"type": "array", "items": {"type": "string"}},
+            "deploy": {"type": "boolean"}, "branch": {"type": "string"}}, "required": ["project", "profiles"]}}},
+    {"type": "function", "function": {"name": "batch_status", "description": "Status of a project's recent batches/chains (how far along, what failed)",
+        "parameters": {"type": "object", "properties": {"project": {"type": "string"}}, "required": ["project"]}}},
+    {"type": "function", "function": {"name": "steam_guard", "description": "Enter a Steam Guard two-factor code to unblock Steam logins/uploads on the build box. Use when the user supplies a Steam Guard / 2FA code, e.g. after a steam deploy failed asking for one",
+        "parameters": {"type": "object", "properties": {
+            "code": {"type": "string"}, "credentialRef": {"type": "string"}}, "required": ["code"]}}},
+    {"type": "function", "function": {"name": "autobuild_config", "description": "A project's AUTOMATIC build rules: which products build on new commits to which branches, how often it polls, enabled state",
+        "parameters": {"type": "object", "properties": {"project": {"type": "string"}}, "required": ["project"]}}},
+    {"type": "function", "function": {"name": "build_info", "description": "Details of one specific build by project and build number: which agent/node ran it, branch, commit, duration, result",
+        "parameters": {"type": "object", "properties": {
+            "project": {"type": "string"}, "buildNumber": {"type": "integer"}}, "required": ["project", "buildNumber"]}}},
+    {"type": "function", "function": {"name": "agents_status", "description": "How many build agents/nodes are online and what each one is doing",
+        "parameters": {"type": "object", "properties": {}}}},
+    {"type": "function", "function": {"name": "running_builds", "description": "List builds currently running or queued, across all projects",
+        "parameters": {"type": "object", "properties": {}}}},
+]
+
+MUTATING = {"trigger_build", "deploy", "add_project", "cancel_build"}
+
+# One source of truth for what the bot can do: /help prints it, and the LLM gets it
+# in the system prompt so "@Smith what can you do?" answers accurately.
+HELP_TEXT = (
+    "**Slash commands**\n"
+    "`/build project [product] [profile] [branch]` — queue a build; profile takes friendly slugs (autocompleted)\n"
+    "`/chain project name [branch]` — run a named chain: parallel builds, then the follow-up if ALL succeed\n"
+    "`/batches project` — recent batches and how far along they are\n"
+    "`/deploy project [product] [branch]` — deploy (asks for confirmation)\n"
+    "`/status project` — recent builds\n"
+    "`/pipeline project` — how the project's builds are set up (its smith.json)\n"
+    "`/running` — builds running or queued right now\n"
+    "`/agents` — build agents and what they're doing\n"
+    "`/explain job_id_or_number [project]` — explanation of a failed build\n"
+    "`/projects` — list projects\n"
+    "`/add-project url [branch]` — add a project by git URL\n"
+    "`/cancel job_id` — cancel a build\n"
+    "`/steam-guard code` — clear a Steam Guard code blocking a Steam deploy\n"
+    "`/help` — this message\n\n"
+    "Alternatively, mention me in plain language: \"build soccer-boy\", "
+    "\"is anything building?\", \"why did build #27 fail?\", "
+    "\"which agent ran build #31 of smith?\". After I respond in a channel, "
+    "further messages within five minutes require no mention; replying to one of "
+    "my messages always reaches me. Conversation state is tracked per channel."
+)
+
+class Ollama:
+    def __init__(self, base, model, session=None, num_ctx=8192, keep_alive="30m"):
+        self.base = base.rstrip("/")
+        self.model = model
+        self.num_ctx = num_ctx
+        self.keep_alive = keep_alive
+        self.http = session or requests.Session()
+
+    def chat(self, messages, tools=None):
+        body = {"model": self.model, "messages": messages, "stream": False,
+                "options": {"num_ctx": self.num_ctx}, "keep_alive": self.keep_alive}
+        if tools:
+            body["tools"] = tools
+        r = self.http.post(self.base + "/api/chat", data=json.dumps(body), timeout=120)
+        r.raise_for_status()
+        return r.json()
+
+    def decide(self, user_text, history=None):
+        """Return (tool_name, args, text). tool_name None -> plain reply in text.
+        `history` is prior {role, content} turns so follow-up questions (e.g. about a
+        failure summary already shown) can be answered conversationally."""
+        sys_prompt = ("You are Smith, the build coordinator's assistant: precise, methodical, unhurried. "
+                      "Answer in complete, composed sentences - state facts, causes and next actions. "
+                      "Never use exclamation marks or emoji; never gush, never apologize effusively. "
+                      "Your courtesy is formal and faintly ominous: words like 'unfortunately', "
+                      "'inevitably', 'as expected', or a measured ellipsis may appear where genuinely "
+                      "apt - at most one such flourish per reply, never forced. "
+                      "Map the user's request to ONE "
+                      "tool call when it is a build/deploy/add-project/status/agents/running-builds/"
+                      "pipeline-setup/autobuild/steam-guard/explain/cancel action, or a chain/batch "
+                      "(run_chain for named chains like 'steam-release'; run_batch with deploy=true for "
+                      "'build all platforms then deploy'; batch_status for how a batch is going; "
+                      "use project_pipeline for questions about how a project builds or deploys, "
+                      "autobuild_config for what builds automatically and when); otherwise answer "
+                      "using the conversation so far "
+                      "(e.g. discuss likely causes of failures or warnings already shown). "
+                      "Never invent project names, build numbers or agents. If asked what you can do "
+                      "or what commands exist, answer from this help text:\n" + HELP_TEXT)
+        msg = [{"role": "system", "content": sys_prompt}] + list(history or []) + [{"role": "user", "content": user_text}]
+        resp = self.chat(msg, TOOLS)
+        m = resp.get("message", {})
+        calls = m.get("tool_calls") or []
+        if calls:
+            fn = calls[0].get("function", {})
+            args = fn.get("arguments", {})
+            if isinstance(args, str):
+                try: args = json.loads(args)
+                except Exception: args = {}
+            return fn.get("name"), args, m.get("content", "")
+        return None, {}, m.get("content", "")
+
+    def summarize_failure(self, diag, log_tail, excerpt=""):
+        prompt = ("Write a clinical incident report on this build failure, 3-5 plain declarative "
+                  "sentences for a developer: the root cause first, then the first concrete error, "
+                  "then the corrective action. The KEY FAILURE LINES section (when present) holds "
+                  "the lines that matter - trust it over the tail, which may end in benign teardown "
+                  "noise. No exclamation marks, no enthusiasm.\n\nDIAGNOSTICS:\n"
+                  + json.dumps(diag or {}, indent=0)[:2000])
+        if excerpt:
+            prompt += "\n\nKEY FAILURE LINES (from anywhere in the log):\n" + excerpt[:2500]
+        prompt += "\n\nLOG TAIL:\n" + (log_tail or "")[-2500:]
+        resp = self.chat([{"role": "user", "content": prompt}])
+        return resp.get("message", {}).get("content", "").strip()
+
+
+# ----------------------------- auth -----------------------------
+def author_allowed(cfg, channel_id, role_ids, user_id):
+    """A command is allowed if it's in an allowed channel (or none configured) AND the
+    author matches an allowed role/user (or no allowlist configured)."""
+    cid = str(channel_id)
+    if cfg.command_channels and cid not in cfg.command_channels:
+        return False
+    if not cfg.allow_roles and not cfg.allow_users:
+        return True
+    if str(user_id) in cfg.allow_users:
+        return True
+    return bool(cfg.allow_roles.intersection({str(r) for r in role_ids}))
+
+
+# ----------------------------- small shared helpers -----------------------------
+def clip(text):
+    """Discord caps messages at 2000 chars; clip with headroom."""
+    return (text or "")[:1900]
+
+# Lines that carry the CAUSE of a failure. A Unity batchmode failure is buried
+# mid-log under hundreds of teardown lines (and the log ends with "Exiting
+# batchmode successfully"), so the tail alone routinely misses it.
+FAILURE_MARKERS = re.compile(
+    r"(?i)(exception|aborting batchmode|player build result: *failed|build did not succeed"
+    r"|scripts have compiler errors|fatal error|: error |error CS\d|\berror C\d+|LNK\d{3,}"
+    r"|^FAIL\b|^ERROR\b|\[ERROR\]|Unity build FAILED|INPUTS:|WARNING: Root cause)"
+)
+
+def failure_excerpt(log_text, max_chars=2500):
+    """Failure-relevant lines from ANYWHERE in the log, in order, clipped to
+    max_chars (head + tail kept when over, the middle dropped)."""
+    hits = []
+    for ln in (log_text or "").splitlines():
+        s = ln.strip()
+        if s and FAILURE_MARKERS.search(s):
+            hits.append(s[:300])
+    text = "\n".join(hits)
+    if len(text) <= max_chars:
+        return text
+    head = text[: max_chars * 3 // 5]
+    tail = text[-(max_chars - len(head) - 20):]
+    return head + "\n[...clipped...]\n" + tail
+
+def job_ref(job_id, caps=False):
+    """The standard short reference to a job: build `xxxxxxxx` (caps at sentence start)."""
+    return ("Build" if caps else "build") + " `%s`" % ((job_id or "")[:8] or "?")
+
+
+# ----------------------------- job references -----------------------------
+def resolve_job(smith, ref, project=""):
+    """Accept a job id or a build number ('45' / '#45'); return a job id, '' if none.
+    Humans say build numbers; the API speaks job ids - bridge the two here so the
+    LLM's tool calls work either way."""
+    ref = (ref or "").strip()
+    if ref.startswith("#"):
+        ref = ref[1:]
+    if not ref.isdigit():
+        return ref
+    want = int(ref)
+    matches = []
+    projects = [{"id": project}] if project else smith.projects()
+    for p in projects:
+        for b in smith.builds(p.get("id", "")):
+            if b.get("buildNumber") == want:
+                matches.append(b)
+    if not matches:
+        return ""
+    matches.sort(key=lambda b: b.get("createdAt", 0), reverse=True)
+    return matches[0].get("jobId", "")
+
+
+# ----------------------------- pipeline summary -----------------------------
+def summarize_pipeline(p):
+    """Human summary of a project's smith.json: how its builds are set up."""
+    proj = p.get("project", {})
+    lines = ["**%s** — %s" % (proj.get("id", "?"), proj.get("description") or proj.get("name", ""))]
+    for prod in p.get("buildProducts", []):
+        lines.append("product **%s**" % prod.get("name", "?"))
+        for r in prod.get("rules", []):
+            bits = ["rule `%s`" % r.get("name", "?"), "branches " + ", ".join(r.get("branches", ["*"]))]
+            sel = r.get("nodeSelector", {})
+            need = ([sel["os"]] if sel.get("os") else []) + sel.get("labels", [])
+            if need:
+                bits.append("needs " + ", ".join(need))
+            steps = [h.get("type", "?") for h in r.get("handoff", [])]
+            if steps:
+                bits.append("handoff: " + ", ".join(steps))
+            lines.append("  • " + " — ".join(bits))
+        variants = [v.get("name") for v in prod.get("variants", []) if v.get("name")]
+        if variants:
+            lines.append("  variants: " + ", ".join(variants))
+    triggers = [t.get("type", "?") for t in p.get("triggers", [])]
+    if triggers:
+        lines.append("triggers: " + ", ".join(triggers))
+    return "\n".join(lines)
+
+
+# ----------------------------- build links -----------------------------
+def build_link(public_url, job_id, text):
+    """Markdown link from `text` to the build's page in the web UI."""
+    if not public_url or not job_id:
+        return text
+    return "[%s](%s/#/build/%s)" % (text, public_url.rstrip("/"), job_id)
+
+
+# ----------------------------- notifications -----------------------------
+def want_notify(cfg, ev):
+    if ev.get("type") == "batch":
+        # Per-build progress is covered by the build events; batches speak up only
+        # at their own transitions.
+        return {"deploying": cfg.notify_start, "succeeded": cfg.notify_success,
+                "failed": cfg.notify_fail}.get(ev.get("status"), False)
+    return {"queued": False, "running": cfg.notify_running or cfg.notify_start,
+            "success": cfg.notify_success, "failed": cfg.notify_fail,
+            "error": cfg.notify_fail, "cancelled": cfg.notify_fail, "lost": cfg.notify_fail}.get(ev.get("type"), False)
+
+def format_event(ev, public_url=""):
+    if ev.get("type") == "batch":
+        icon = {"succeeded": "✅", "failed": "❌"}.get(ev.get("status"), "🔨")
+        out = "%s **%s** batch %s — %s" % (icon, ev.get("projectId", "?"), ev.get("name", "?"), ev.get("status", "?"))
+        if ev.get("summary"):
+            out += " — " + ev["summary"]
+        return out
+    # Status glyphs only; cancelled/lost are stated in words.
+    icon = {"running": "🔨", "success": "✅", "failed": "❌", "error": "❌"}.get(ev.get("type"), "•")
+    proj = ev.get("projectId", "?")
+    prod = ev.get("product", "")
+    var = ev.get("variant", "")
+    n = ev.get("buildNumber", "")
+    extra = ""
+    if ev.get("errorCount"):
+        extra = " — %d error(s), %d warning(s)" % (ev.get("errorCount", 0), ev.get("warningCount", 0))
+    # Deliberately no node name here: notifications stay terse, and "which agent?"
+    # is one click (the build link) or one question (build_info) away.
+    label = "/".join([x for x in (proj, prod, var) if x])
+    ref = build_link(public_url, ev.get("jobId", ""), "build #%s" % n)
+    shown = {"lost": "lost (the agent vanished)"}.get(ev.get("type"), ev.get("type"))
+    return "%s **%s** %s — %s%s" % (icon, label, ref, shown, extra)
+
+
+CONFIG_REMIND_SEC = 4 * 3600
+
+def config_alert(state, status, now):
+    """Decide what, if anything, to tell the notify channel about config-file health.
+
+    `state` is {"key": str, "at": float} carried between checks ("key" = the problem last
+    announced, "" = none). Each distinct problem is announced once, repeated every
+    CONFIG_REMIND_SEC while unresolved, and its resolution is announced once. Returns
+    (new_state, message or None); the caller keeps the old state if sending fails.
+    """
+    if not isinstance(status, dict) or "ok" not in status:
+        return state, None   # unreachable coordinator / pre-status build: say nothing
+    if status.get("ok"):
+        if state.get("key"):
+            return {"key": "", "at": now}, "✅ Smith's config file is healthy again."
+        return state, None
+    key = "|".join(str(status.get(k, "")) for k in ("state", "fileError", "startupError"))
+    if key == state.get("key") and now - state.get("at", 0) < CONFIG_REMIND_SEC:
+        return state, None
+    head = "⚠️ **Smith config needs a restart**" if status.get("severity") == "warn" else "❌ **Smith config file is invalid**"
+    return {"key": key, "at": now}, "%s — %s" % (head, status.get("message") or "check the coordinator.")
+
+
+# ----------------------------- SSE event stream -----------------------------
+def stream_events(cfg, on_event, stop):
+    """Subscribe to /api/events and call on_event(dict) for each. Reconnects on drop."""
+    url = cfg.coordinator + "/api/events"
+    headers = {"Authorization": "Bearer " + cfg.api_token} if cfg.api_token else {}
+    while not stop.is_set():
+        try:
+            with requests.get(url, headers=headers, stream=True, timeout=(10, 65)) as r:
+                for raw in r.iter_lines(decode_unicode=True):
+                    if stop.is_set():
+                        return
+                    if not raw or not raw.startswith("data:"):
+                        continue
+                    try:
+                        on_event(json.loads(raw[5:].strip()))
+                    except Exception:
+                        pass
+        except Exception:
+            if stop.is_set():
+                return
+            time.sleep(3)
+
+
+# ----------------------------- discord wiring -----------------------------
+def run_bot(cfg):
+    if discord is None:
+        print("smith-discord-bot: discord.py not installed", file=sys.stderr)
+        return 2
+    smith = SmithClient(cfg.coordinator, cfg.api_token)
+    llm = Ollama(cfg.ollama_url, cfg.ollama_model, num_ctx=cfg.ollama_num_ctx, keep_alive=cfg.ollama_keep_alive)
+    histories = {}   # channel id -> rolling [{role, content}] so follow-ups have context
+    attention = {}   # channel id -> time of the bot's last reply there (no-@ follow-up window)
+    HISTORY_MAX = 12
+    intents = discord.Intents.default()
+    intents.message_content = True
+    client = discord.Client(intents=intents)
+    tree = app_commands.CommandTree(client)
+    stop = threading.Event()
+
+    # Presence mirrors what the bot is doing ('thinking...' / 'working...'), like the
+    # other RM bots. Best-effort: presence is cosmetic, never let it break a reply.
+    async def set_presence(state):
+        try:
+            await client.change_presence(activity=discord.CustomActivity(name=state) if state else None)
+        except Exception:
+            pass
+
+    def allowed_interaction(inter):
+        roles = [r.id for r in getattr(inter.user, "roles", [])]
+        return author_allowed(cfg, inter.channel_id, roles, inter.user.id)
+
+    async def deny(inter):
+        await inter.response.send_message("Unfortunately, this is not authorized in this channel.", ephemeral=True)
+
+    # The standard slash-command shell: defer (the work is blocking HTTP + maybe an
+    # LLM call), run the intent off-thread, clip, send.
+    async def respond(inter, action, args):
+        await inter.response.defer(thinking=True)
+        await inter.followup.send(clip(await asyncio.to_thread(
+            do_action, smith, llm, action, args, cfg.public_url)))
+
+    # Cached project list for slash-command autocomplete. Discord gives autocomplete
+    # 3s to answer; refreshing inline meant a slow /api/projects timed out and the
+    # client kept showing its previous (stale) choices. A background thread keeps the
+    # cache warm so handlers only ever read it.
+    proj_cache = {"ts": 0.0, "data": []}
+
+    def refresh_projects():
+        try:
+            proj_cache["data"] = smith.projects()
+            proj_cache["ts"] = time.time()
+        except Exception as e:
+            print("project cache refresh failed: %s" % e, flush=True)
+
+    def project_refresher():
+        while not stop.is_set():
+            refresh_projects()
+            stop.wait(10)
+
+    threading.Thread(target=project_refresher, daemon=True).start()
+
+    def cached_projects():
+        if not proj_cache["data"]:
+            refresh_projects()
+        return proj_cache["data"]
+
+    async def project_choices(inter, current):
+        ps = await asyncio.to_thread(cached_projects)
+        return [app_commands.Choice(name=p.get("id", "?"), value=p.get("id", "?"))
+                for p in ps if current.lower() in p.get("id", "").lower()][:25]
+
+    # Smith/Ollama calls are blocking HTTP - always run them via asyncio.to_thread so
+    # they can't stall the event loop (a stalled loop misses gateway heartbeats and
+    # Discord drops the connection; an Ollama cold model load alone can take minutes).
+    @tree.command(description="Trigger a build (profile accepts friendly slugs like steam-windows)")
+    async def build(inter, project: str, product: str = "", profile: str = "", branch: str = "", clean: bool = False):
+        if not allowed_interaction(inter):
+            return await deny(inter)
+        await inter.response.defer(thinking=True)
+        try:
+            r = await asyncio.to_thread(smith.trigger, project, product, branch, profile, "discord", clean)
+            jid = r.get("jobId", "")
+            await inter.followup.send(build_link(cfg.public_url, jid, job_ref(jid, caps=True)) + " has been queued.")
+        except Exception as e:
+            await inter.followup.send("The request failed: %s" % e)
+
+    @build.autocomplete("project")
+    async def build_project_ac(inter, current: str):
+        return await project_choices(inter, current)
+
+    @build.autocomplete("profile")
+    async def build_profile_ac(inter, current: str):
+        # Offer slugs (with the product when ambiguous), filtered by what's typed.
+        target = getattr(inter.namespace, "project", "") or ""
+        out = []
+        for p in await asyncio.to_thread(cached_projects):
+            if target and p.get("id") != target:
+                continue
+            for product in p.get("products", []):
+                for v in product.get("variants", []):
+                    slug = v.get("slug") or v.get("name", "")
+                    if current.lower() in slug.lower():
+                        out.append(app_commands.Choice(name=slug, value=slug))
+        # De-duplicate while keeping order; Discord caps choices at 25.
+        seen, uniq = set(), []
+        for c in out:
+            if c.value in seen:
+                continue
+            seen.add(c.value)
+            uniq.append(c)
+        return uniq[:25]
+
+    @tree.command(description="Run a named chain: parallel builds, then the follow-up if all succeed")
+    async def chain(inter, project: str, name: str, branch: str = "", clean: bool = False):
+        if not allowed_interaction(inter):
+            return await deny(inter)
+        await respond(inter, "run_chain", {"project": project, "chain": name, "branch": branch, "clean": clean})
+
+    @chain.autocomplete("project")
+    async def chain_project_ac(inter, current: str):
+        return await project_choices(inter, current)
+
+    @chain.autocomplete("name")
+    async def chain_name_ac(inter, current: str):
+        target = getattr(inter.namespace, "project", "") or ""
+        out = []
+        for p in await asyncio.to_thread(cached_projects):
+            if target and p.get("id") != target:
+                continue
+            for c in p.get("chains", []):
+                if current.lower() in c.get("name", "").lower():
+                    out.append(app_commands.Choice(name=c.get("name", "?"), value=c.get("name", "?")))
+        return out[:25]
+
+    @tree.command(description="Recent batches/chains of a project")
+    async def batches(inter, project: str):
+        await respond(inter, "batch_status", {"project": project})
+
+    @tree.command(description="Deploy a project (asks for confirmation)")
+    async def deploy(inter, project: str, product: str = "", branch: str = ""):
+        if not allowed_interaction(inter):
+            return await deny(inter)
+        view = ConfirmView()
+        await inter.response.send_message("Deploying **%s** %s will publish to Steam. That is not easily undone. Confirm." % (project, product),
+                                          view=view, ephemeral=False)
+        await view.wait()
+        if not view.value:
+            return await inter.followup.send("Very well. Nothing has been done.")
+        try:
+            r = await asyncio.to_thread(smith.trigger, project, product, branch, "", "discord-deploy")
+            jid = r.get("jobId", "")
+            await inter.followup.send("The deploy has been queued: " + build_link(cfg.public_url, jid, job_ref(jid)) + ". It will proceed... inevitably.")
+        except Exception as e:
+            await inter.followup.send("Failed: %s" % e)
+
+    @tree.command(description="Recent build status for a project")
+    async def status(inter, project: str):
+        await inter.response.defer(thinking=True)
+        try:
+            bs = (await asyncio.to_thread(smith.builds, project))[:5]
+            if not bs:
+                return await inter.followup.send("No builds exist for `%s`. Yet." % project)
+            lines = [build_link(cfg.public_url, b.get("jobId", ""), "#%s" % b.get("buildNumber", "?"))
+                     + " — **%s** (%s)" % (b.get("status", "?"), b.get("phase", "")) for b in bs]
+            await inter.followup.send("\n".join(lines))
+        except Exception as e:
+            await inter.followup.send("Failed: %s" % e)
+
+    @tree.command(description="Explain why a build failed (LLM). Accepts a job id or a build number")
+    async def explain(inter, job_id: str, project: str = ""):
+        await respond(inter, "explain_failure", {"jobId": job_id, "project": project})
+
+    @tree.command(description="How a project's builds are set up (its smith.json)")
+    async def pipeline(inter, project: str):
+        await respond(inter, "project_pipeline", {"project": project})
+
+    @tree.command(description="Build agents and what they're doing")
+    async def agents(inter):
+        await respond(inter, "agents_status", {})
+
+    @tree.command(description="Builds running or queued right now")
+    async def running(inter):
+        await respond(inter, "running_builds", {})
+
+    @tree.command(name="steam-guard", description="Enter a Steam Guard code to unblock Steam uploads")
+    async def steam_guard_cmd(inter, code: str, credential_ref: str = ""):
+        if not allowed_interaction(inter):
+            return await deny(inter)
+        await respond(inter, "steam_guard", {"code": code, "credentialRef": credential_ref})
+
+    @tree.command(name="help", description="What this bot can do")
+    async def help_cmd(inter):
+        await inter.response.send_message(HELP_TEXT, ephemeral=True)
+
+    @tree.command(description="List projects")
+    async def projects(inter):
+        await inter.response.defer(thinking=True)
+        try:
+            ps = await asyncio.to_thread(smith.projects)
+            await inter.followup.send("\n".join("• `%s` — %s" % (p.get("id"), p.get("name", "")) for p in ps) or "No projects are registered.")
+        except Exception as e:
+            await inter.followup.send("Failed: %s" % e)
+
+    @tree.command(name="add-project", description="Add a project by git URL")
+    async def add_project(inter, url: str, branch: str = ""):
+        if not allowed_interaction(inter):
+            return await deny(inter)
+        await inter.response.defer(thinking=True)
+        try:
+            await asyncio.to_thread(smith.add_project, url, branch)
+            await inter.followup.send("Registering `%s`. Its pipeline will be read momentarily." % url)
+        except Exception as e:
+            await inter.followup.send("Failed: %s" % e)
+
+    @tree.command(description="Cancel a build. Accepts a job id or a build number")
+    async def cancel(inter, job_id: str, project: str = ""):
+        if not allowed_interaction(inter):
+            return await deny(inter)
+        await respond(inter, "cancel_build", {"jobId": job_id, "project": project})
+
+    class ConfirmView(discord.ui.View):
+        def __init__(self):
+            super().__init__(timeout=60)
+            self.value = False
+        @discord.ui.button(label="Confirm", style=discord.ButtonStyle.danger)
+        async def confirm(self, inter, button):
+            self.value = True
+            await inter.response.defer()
+            self.stop()
+        @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+        async def cancel(self, inter, button):
+            self.value = False
+            await inter.response.defer()
+            self.stop()
+
+    @client.event
+    async def on_ready():
+        try:
+            if cfg.guild_id:
+                g = discord.Object(id=int(cfg.guild_id))
+                tree.copy_global_to(guild=g)
+                await tree.sync(guild=g)
+            else:
+                await tree.sync()
+        except Exception as e:
+            print("slash sync failed:", e, file=sys.stderr)
+        print("smith-discord-bot: ready as", client.user, flush=True)
+
+    # Natural language: a mention or DM is routed through Ollama tool-calling.
+    @client.event
+    async def on_message(msg):
+        if msg.author.bot:
+            return
+        is_dm = msg.guild is None
+        mentioned = client.user in getattr(msg, "mentions", [])
+        # Typing @Smith usually resolves to the bot's MANAGED ROLE (created by the
+        # invite), which lands in role_mentions, not mentions - treat a mention of
+        # any role we hold as addressing us too.
+        if not mentioned and msg.guild is not None and msg.guild.me:
+            ours = set(getattr(msg.guild.me, "roles", []))
+            mentioned = any(r in ours for r in getattr(msg, "role_mentions", []))
+        # Replying to one of the bot's messages counts as addressing it.
+        if not mentioned and msg.reference is not None:
+            ref = getattr(msg.reference, "resolved", None)
+            mentioned = ref is not None and getattr(ref, "author", None) == client.user
+        if not is_dm and not mentioned:
+            # Continue a recent conversation without requiring another @ - but stay
+            # quiet if the message mentions somebody else (it's aimed at them).
+            recent = (time.time() - attention.get(msg.channel.id, 0)) < cfg.attention_sec
+            aimed_elsewhere = bool(getattr(msg, "mentions", []) or getattr(msg, "role_mentions", []))
+            if not recent or aimed_elsewhere:
+                return
+        roles = [r.id for r in getattr(msg.author, "roles", [])]
+        if not author_allowed(cfg, msg.channel.id, roles, msg.author.id):
+            return
+        text = msg.content
+        if client.user:
+            text = text.replace("<@%s>" % client.user.id, "").replace("<@!%s>" % client.user.id, "")
+        for r in getattr(msg, "role_mentions", []):
+            text = text.replace("<@&%s>" % r.id, "")
+        text = text.strip()
+        print("smith-discord-bot: message from %s in #%s" % (msg.author, getattr(msg.channel, "name", "DM")), flush=True)
+        hist = histories.setdefault(msg.channel.id, [])
+
+        def remember(bot_text):
+            hist.append({"role": "user", "content": text})
+            hist.append({"role": "assistant", "content": bot_text})
+            del hist[:-HISTORY_MAX]
+            attention[msg.channel.id] = time.time()
+        # Show a typing indicator + a 'thinking...' presence while the local LLM works
+        # (a cold Ollama model load alone can take minutes, and without feedback the bot
+        # looks like it blanked the user). The blocking Smith/Ollama calls run via
+        # asyncio.to_thread so heartbeats and the typing refresh keep flowing.
+        await set_presence("processing...")
+        try:
+            async with msg.channel.typing():
+                try:
+                    name, args, reply = await asyncio.to_thread(llm.decide, text, list(hist))
+                except Exception as e:
+                    return await msg.channel.send("LLM error: %s" % e)
+            if not name:
+                fallback = "Your meaning is unclear. Do restate it."
+                remember(reply or fallback)
+                return await msg.channel.send(clip(reply) or fallback)
+            # Mutating actions require confirmation (deploy always).
+            if name in MUTATING:
+                need = (name == "deploy" and cfg.confirm_deploy) or name in ("deploy", "add_project", "trigger_build", "cancel_build")
+                if need:
+                    view = ConfirmView()
+                    await msg.channel.send("Confirm: **%s** %s." % (name, json.dumps(args)), view=view)
+                    await view.wait()
+                    if not view.value:
+                        return await msg.channel.send("Very well. Nothing has been done.")
+            await set_presence("executing...")
+            async with msg.channel.typing():
+                result = await asyncio.to_thread(do_action, smith, llm, name, args, cfg.public_url)
+            remember(result)
+            await msg.channel.send(clip(result))
+        finally:
+            await set_presence(None)
+
+    # Notifications: pump SSE events to the notify channel.
+    def on_ev(ev):
+        if not cfg.notify_channel or not want_notify(cfg, ev):
+            return
+        ch = client.get_channel(int(cfg.notify_channel)) if cfg.notify_channel.isdigit() else None
+        if ch:
+            # Called from the SSE thread: create_task is not thread-safe, hand the
+            # coroutine to the event loop properly.
+            asyncio.run_coroutine_threadsafe(ch.send(format_event(ev, cfg.public_url)), client.loop)
+    threading.Thread(target=stream_events, args=(cfg, on_ev, stop), daemon=True).start()
+
+    # Config health: complain in the notify channel when smith-coordinator.json is broken
+    # (Smith is then on its last-known-good copy) or needs a restart, and say when it's fixed.
+    def config_watch():
+        state = {"key": "", "at": 0.0}
+        while not stop.is_set():
+            ch = None
+            if cfg.notify_channel.isdigit() and client.is_ready():
+                ch = client.get_channel(int(cfg.notify_channel))
+            if ch:
+                try:
+                    new_state, msg = config_alert(state, smith.config_status(), time.time())
+                    if msg:
+                        asyncio.run_coroutine_threadsafe(ch.send(clip(msg)), client.loop).result(timeout=30)
+                    state = new_state
+                except Exception as e:
+                    print("config status check failed: %s" % e, flush=True)
+            stop.wait(60 if ch else 5)
+    threading.Thread(target=config_watch, daemon=True).start()
+
+    # Watchdog: if the agent (our parent) dies without stopping us, we get reparented to
+    # init (ppid 1) - exit hard so a killed coordinator never leaves the bot behind.
+    def watchdog():
+        parent = os.getppid()
+        while not stop.is_set():
+            if os.getppid() != parent and os.getppid() == 1:
+                os._exit(0)
+            time.sleep(2)
+    threading.Thread(target=watchdog, daemon=True).start()
+
+    try:
+        client.run(cfg.token)
+    finally:
+        stop.set()
+    return 0
+
+
+def do_action(smith, llm, name, args, public_url=""):
+    """Execute a confirmed/non-mutating intent and return a human reply (no discord)."""
+    try:
+        if name == "trigger_build":
+            r = smith.trigger(args.get("project", ""), args.get("product", ""), args.get("branch", ""),
+                              clean=args.get("clean", False))
+            jid = (r or {}).get("jobId", "")
+            return build_link(public_url, jid, job_ref(jid, caps=True)) + " has been queued."
+        if name == "deploy":
+            r = smith.trigger(args.get("project", ""), args.get("product", ""), args.get("branch", ""), reason="discord-deploy")
+            jid = (r or {}).get("jobId", "")
+            return "The deploy has been queued: " + build_link(public_url, jid, job_ref(jid)) + ". It will proceed... inevitably."
+        if name == "add_project":
+            smith.add_project(args.get("url", ""), args.get("branch", ""))
+            return "Registering `%s`. Its pipeline will be read momentarily." % args.get("url", "")
+        if name == "build_status":
+            bs = smith.builds(args.get("project", ""))[:5]
+            return "\n".join(build_link(public_url, b.get("jobId", ""), "#%s" % b.get("buildNumber", "?"))
+                             + " — %s" % b.get("status")
+                             + ((" on %s" % b["nodeName"]) if b.get("nodeName") else "") for b in bs) or "No builds exist. Yet."
+        if name == "build_info":
+            want = int(args.get("buildNumber", 0) or 0)
+            for b in smith.builds(args.get("project", "")):
+                if b.get("buildNumber") != want:
+                    continue
+                node = b.get("nodeName") or (b.get("nodeId", "")[:8] or "unknown")
+                line = build_link(public_url, b.get("jobId", ""), "build #%d" % want) + " of %s — **%s**" % (
+                       args.get("project", "?"), b.get("status", "?"))
+                if b.get("status") in ("failed", "error"):
+                    line += " (exit %s)" % b.get("exitCode", "?")
+                line += "\nagent: **%s**" % node
+                if b.get("branch"):
+                    line += "\nbranch: %s" % b["branch"] + ((" @ %s" % b["commit"][:9]) if b.get("commit") else "")
+                if b.get("durationMs"):
+                    line += "\ntook: %ds" % int(b["durationMs"] / 1000)
+                return line
+            return "Regrettably, no record exists of build #%d for %s." % (want, args.get("project", "?"))
+        if name == "explain_failure":
+            jid = resolve_job(smith, args.get("jobId", ""), args.get("project", ""))
+            if not jid:
+                return "Regrettably, no build matches '%s'." % args.get("jobId", "?")
+            log = smith.log_text(jid)
+            return llm.summarize_failure(smith.diagnostics(jid), log[-2500:],
+                                         failure_excerpt(log)) or "No summary could be produced."
+        if name == "cancel_build":
+            jid = resolve_job(smith, args.get("jobId", ""), args.get("project", ""))
+            if not jid:
+                return "Regrettably, no build matches '%s'." % args.get("jobId", "?")
+            smith.cancel(jid)
+            return "Build `%s` is being cancelled, as requested." % jid
+        if name == "project_pipeline":
+            p = smith.pipeline(args.get("project", ""))
+            return summarize_pipeline(p) if p else "No smith.json exists for `%s`." % args.get("project", "?")
+        if name in ("run_chain", "run_batch"):
+            project = args.get("project", "")
+            if name == "run_chain":
+                r = smith.create_batch(project, chain=args.get("chain", ""), branch=args.get("branch", ""),
+                                       clean=args.get("clean", False))
+            else:
+                builds = []
+                for ref in args.get("profiles", []) or []:
+                    # "product/profile" targets a product explicitly; a bare ref means
+                    # the first product that knows the variant.
+                    if "/" in ref:
+                        prod, _, prof = ref.partition("/")
+                        builds.append({"product": prod, "profile": prof})
+                    else:
+                        prod = ""
+                        for p in smith.projects():
+                            if p.get("id") != project:
+                                continue
+                            for product in p.get("products", []):
+                                for v in product.get("variants", []):
+                                    if ref in (v.get("name"), v.get("slug")):
+                                        prod = product.get("name", "")
+                        builds.append({"product": prod or "unity", "profile": ref})
+                then = []
+                if args.get("deploy"):
+                    for p in smith.projects():
+                        if p.get("id") == project:
+                            for product in p.get("products", []):
+                                if product.get("hasInputs"):
+                                    then.append({"product": product.get("name", "")})
+                r = smith.create_batch(project, builds=builds, then=then, branch=args.get("branch", ""))
+            if (r or {}).get("error"):
+                return "❌ %s" % r["error"]
+            n = len((r or {}).get("jobIds", []))
+            line = "Batch `%s` is in motion: %d builds queued in parallel" % (r.get("batchId", "?"), n)
+            if name == "run_chain" or args.get("deploy"):
+                line += "; the follow-up will run only if every build succeeds."
+            else:
+                line += "."
+            return line
+        if name == "batch_status":
+            bs = smith.batches(args.get("project", ""))[:5]
+            if not bs:
+                return "No batches exist for `%s`. Yet." % args.get("project", "?")
+            lines = []
+            for b in bs:
+                jobs = " ".join(build_link(public_url, j.get("jobId", ""), "#%s" % (j.get("buildNumber") or "?"))
+                                + ":" + j.get("status", "?") for j in b.get("builds", []))
+                lines.append("**%s** — %s — %s — %s" % (b.get("name", "?"), b.get("status", "?"),
+                             b.get("detail", ""), jobs))
+            return "\n".join(lines)
+        if name == "steam_guard":
+            r = smith.steam_guard(args.get("code", "").strip(), args.get("credentialRef", ""))
+            rid = (r or {}).get("requestId", "")
+            if not rid:
+                return "❌ %s" % (r or {}).get("error", "The code was not accepted.")
+            node = (r or {}).get("node", "the steamcmd agent")
+            # steamcmd login can take a while; poll until the agent reports back.
+            for _ in range(60):
+                st = smith.steam_guard_status(rid)
+                if st.get("status") == "done":
+                    return "✅ The Steam Guard code was accepted on **%s**. The deploy may now proceed." % st.get("node", node)
+                if st.get("status") == "failed":
+                    return "❌ Steam rejected the code on **%s**%s. Another may be required." % (st.get("node", node),
+                           (" — " + st["detail"]) if st.get("detail") else "")
+                time.sleep(3)
+            return "⏳ The code reached **%s**; a verdict has not yet returned. Consult the agent log." % node
+        if name == "autobuild_config":
+            rules = smith.autobuilds(args.get("project", ""))
+            lines = []
+            for r in rules:
+                lines.append("%s **%s** on `%s` every %ss — %s" % (
+                    "🟢" if r.get("enabled") else "⚫", r.get("product", "?"), r.get("branch", "?"),
+                    r.get("intervalSeconds", "?"), "enabled" if r.get("enabled") else "disabled"))
+            return "\n".join(lines) or ("No autobuild rules exist for `%s`. Its builds are manual — "
+                                        "inevitably, someone must press the button." % args.get("project", "?"))
+        if name == "agents_status":
+            ns = smith.nodes()
+            online = [n for n in ns if n.get("online")]
+            lines = []
+            for n in ns:
+                doing = n.get("status", "?")
+                if n.get("currentJobId"):
+                    doing = "building " + build_link(public_url, n["currentJobId"], "a job")
+                labels = ", ".join(n.get("labels", []))
+                lines.append("%s **%s** (%s%s) — %s" % ("🟢" if n.get("online") else "⚫",
+                             n.get("hostname", "?"), n.get("os", "?"),
+                             (", " + labels) if labels else "", doing))
+            return ("%d/%d agents online\n" % (len(online), len(ns)) + "\n".join(lines)) if ns else "No agents are registered."
+        if name == "running_builds":
+            lines = []
+            for p in smith.projects():
+                for b in smith.builds(p.get("id", "")):
+                    if b.get("status") in ("running", "queued"):
+                        lines.append("%s %s " % ("🔨" if b.get("status") == "running" else "⏳", p.get("id", "?"))
+                                     + build_link(public_url, b.get("jobId", ""), "#%s" % b.get("buildNumber", "?"))
+                                     + " — %s (%s)" % (b.get("status"), b.get("product", "")))
+            return "\n".join(lines) or "Nothing is building or queued. The agents are... idle."
+    except Exception as e:
+        return "The request failed: %s" % e
+    return "Unknown action."
+
+
+def main():
+    cfg = Config()
+    print("smith-discord-bot: starting; coordinator=%s ollama=%s model=%s" %
+          (cfg.coordinator, cfg.ollama_url, cfg.ollama_model), flush=True)
+    if cfg.dry_run:
+        print("smith-discord-bot: dry run (no Discord/Ollama connection), exiting 0", flush=True)
+        return 0
+    if not cfg.token:
+        print("smith-discord-bot: no SMITH_DISCORD_TOKEN; nothing to do", file=sys.stderr)
+        return 1
+    return run_bot(cfg)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

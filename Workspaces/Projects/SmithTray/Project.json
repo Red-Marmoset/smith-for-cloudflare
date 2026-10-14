@@ -1,0 +1,8 @@
+{
+    "name": "SmithTray",
+    "type": "editor",
+    "version": "0.1.0",
+    "description": "Smith desktop tray (wxWidgets) - coordinator + co-located agent + tray icon",
+    "modules": ["SmithTray"],
+    "compiler": "msvc"
+}

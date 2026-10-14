@@ -1,0 +1,15 @@
+unity|App Store (Mac)|app-store-mac|mac|
+unity|App Store (iOS)|app-store-ios|mac|unity-ios
+unity|Demo Steam (Mac)|demo-steam-mac|mac|
+unity|Demo Steam (Windows)|demo-steam-windows|windows|
+unity|Jamaine - Demo Build|jamaine-demo-build|windows|
+unity|Jamaine - Demo Build (Mac)|jamaine-demo-build-mac|mac|
+unity|Jamaine - Demo Steam|jamaine-demo-steam|windows|
+unity|Jamaine - Demo Steam (Mac)|jamaine-demo-steam-mac|mac|
+unity|No Steam (Linux)|no-steam-linux|any|unity-linux-il2cpp
+unity|No Steam (Mac)|no-steam-mac|mac|
+unity|No Steam (Windows)|no-steam-windows|windows|
+unity|Sebastian - Demo Build|sebastian-demo-build|windows|
+unity|Steam (Linux)|steam-linux|any|unity-linux-il2cpp
+unity|Steam (Mac)|steam-mac|mac|
+unity|Steam (Windows)|steam-windows|windows|

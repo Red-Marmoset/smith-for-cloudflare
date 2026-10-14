@@ -1,0 +1,47 @@
+# Build output and BuildTool cache
+Build/
+.una/
+
+# Local runtime data (coordinator/agent state, logs, artifacts)
+/data/
+*.log
+
+# Operator-local config + state (never commit real values - the *.example is the template).
+# smith-coordinator.json is auto-loaded from the working dir, so guard the repo root.
+smith-coordinator.json
+smith-coordinator.lkg.json
+sessions.json
+users.json
+project-sources.json
+project-requests.json
+poll-state.json
+autobuilds.json
+
+# Build artifacts
+*.pdb
+
+# Editor / OS cruft
+*.user
+.vs/
+.DS_Store
+Thumbs.db
+
+# Claude Code local session state (not part of the project)
+.claude/
+
+# Serena code-agent config + cache; Serena rewrites project.yml whenever it upgrades
+.serena/
+
+# Python bytecode (bot tooling)
+__pycache__/
+*.pyc
+.tokensave
+
+# Cloudflare development and operator credentials
+node_modules/
+.wrangler/
+.dev.vars*
+.env*
+.smith-operator/
+/cloudflare/coordinator/worker-configuration.d.ts
+/cloudflare/coordinator/dist/

@@ -1,0 +1,63 @@
+{
+  "_comment": "Smith coordinator config. Copy to 'smith-coordinator.json' (auto-loaded from the working directory) or pass --config <path>. Any CLI flag overrides the matching value here. Unknown keys (like this one) are ignored.",
+
+  "host": "0.0.0.0",
+  "port": 9876,
+  "webDir": "",
+  "token": "",
+  "requireTokenAlways": false,
+  "pollIntervalSec": 60,
+  "discovery": true,
+  "withAgent": true,
+  "agentLabels": ["unity6"],
+  "projects": [],
+  "projectRepos": [],
+  "notifyCommand": "",
+  "notifyOn": "failed",
+  "_cancelRunningOnNewCommit_comment": "A poll/autobuild/webhook build always supersedes a still-QUEUED build of the same product+branch+platform, so a burst of pushes builds ONCE, on the newest commit. Set this true to abort the build already RUNNING as well, so the newest commit starts immediately. Leave false if commits can arrive faster than a build takes - otherwise no build ever finishes.",
+  "cancelRunningOnNewCommit": false,
+  "_githubToken_comment": "Optional GitHub PAT so build agents can clone PRIVATE GitHub repos over HTTPS without a per-host SSH key. Use a fine-grained PAT with read-only Contents (or a classic 'repo' token). A secret - never logged; reaches agents only as a git http.extraheader, never in the URL or .git/config. Empty = each host uses its own git/SSH auth.",
+  "githubToken": "",
+  "_env_comment": "Environment injected into every build, on every agent - remote nodes included, not just the co-located one. Rule-level env in a project smith.json overrides these. Values travel with the job, so treat them as visible to any node that runs one.",
+  "env": { "UNA_ENGINE_PATH": "C:\\code\\engine" },
+
+  "auth": {
+    "_comment": "Google Workspace sign-in. Leave googleClientId empty to keep auth OFF. See docs/google-auth.md.",
+    "googleClientId": "",
+    "allowedDomains": ["redmarmosetstudios.com"],
+    "allowedEmails": [],
+    "adminEmails": [],
+    "requireLogin": false,
+    "tokenVerifyCommand": ""
+  },
+
+  "dns": {
+    "_comment": "Optional dynamic DNS. Leave record/apiToken empty to keep it OFF. Keeps a Cloudflare A record pointed at this box's current public IP - handy behind a dynamic home IP. Needs a Cloudflare API token with DNS:Edit on the zone (a secret; never logged).",
+    "provider": "cloudflare",
+    "apiToken": "",
+    "zone": "redmarmosetstudios.com",
+    "record": "smith.redmarmosetstudios.com",
+    "proxied": true,
+    "intervalSeconds": 300
+  },
+
+  "discord": {
+    "_comment": "Optional Discord bot. Leave enabled=false (or token empty) to keep it OFF. The coordinator runs a Python bot (discord.py) on the AGENT with the most free GPU memory and points it at that box's local Ollama. It drives builds/deploys/add-project + posts build notifications. The bot token is a secret - never logged. The host agent needs python3 and `ollama pull <model>`.",
+    "enabled": false,
+    "token": "",
+    "appId": "",
+    "guildId": "",
+    "notifyChannelId": "",
+    "commandChannels": [],
+    "allowRoles": [],
+    "allowUsers": [],
+    "pinNode": "",
+    "ollamaUrl": "http://127.0.0.1:11434",
+    "ollamaModel": "qwen3.5:9b",
+    "notifyStart": true,
+    "notifyRunning": false,
+    "notifySuccess": true,
+    "notifyFail": true,
+    "confirmDeploy": true
+  }
+}

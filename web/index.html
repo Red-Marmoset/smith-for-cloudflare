@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Smith</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/smith-icon.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand"><a href="#/"><img src="/smith-icon.png" alt="Smith" class="brand-icon" />Smith</a></div>
+    <nav>
+      <a href="#/">Dashboard</a>
+      <a href="#/projects">Projects</a>
+      <a href="#/agents">Agents</a>
+      <a href="#/settings">Settings</a>
+      <a href="/help.html" title="Setup, smith.json, agents, troubleshooting and planned tasks">Help</a>
+    </nav>
+    <div class="spacer"></div>
+    <div id="me" class="me"></div>
+    <div id="conn" class="conn">…</div>
+  </header>
+  <div id="cfgalert" class="cfgalert" role="alert" hidden></div>
+  <details class="inline-help"><summary>Coordinator, builds and agents — help</summary><p>Projects read repository <code>smith.json</code>. Trigger selects a product, primary branch, variant and machine OS. All required capability labels must match; labels do not install tools. Clean wipes untracked and ignored files in the agent checkout. Autobuild polling baselines first and builds on the next commit change. <a href="/help.html#user-guide-native-coordinator-and-agent">Coordinator guide</a> · <a href="/help.html#smith-json">Configuration reference</a> · <a href="/help.html#user-guide-troubleshooting">Troubleshooting</a> · <a href="/help.html#task-stubs">Planned tasks</a></p></details>
+  <main id="app"><div class="loading">Loading…</div></main>
+  <footer>System for Managed Integration, Testing &amp; Handoff · <a href="/help.html">User help</a></footer>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
